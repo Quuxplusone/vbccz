@@ -4,4 +4,7 @@ vbccz:
 diff:
 	git diff master -- vbcc/ > vbcc-patch.diff
 
-.PHONY: diff
+test: vbccz
+	cd test ; make
+
+.PHONY: diff test
