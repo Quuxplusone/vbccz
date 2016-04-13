@@ -4,7 +4,7 @@
 HOSTID =
 
 # used to compile vbcc, vc, ucpp, etc. for the selected host
-CC = gcc -std=c9x -g -DHAVE_AOS4 #-fsanitize=address #-DHAVE_ECPP -DHAVE_MISRA
+CC = gcc -std=c9x -g -DHAVE_AOS4 $(CFLAGS) #-fsanitize=address #-DHAVE_ECPP -DHAVE_MISRA
 LDFLAGS = -lm
 
 # used to compile dtgen and osekrm natively

@@ -1,0 +1,8 @@
+/vbcc/bin/*
+/vbcc/machines/*/*.o
+/vbcc/machines/*/dt.c
+/vbcc/machines/*/dt.h
+/vbcc-patch.diff
+/z-machine/cstubs.s
+/test/*.z8
+/test/.objs
