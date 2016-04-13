@@ -1,0 +1,19 @@
+
+#include "runtime.inf";
+#include "stubs.inf";
+#include "cstubs.s";
+! Add an #include line for each of your program's modules here.
+
+Constant __c_stack_size 4096;
+Array __c_stack -> __c_stack_size;
+
+[ Main  xp;
+    __init_vars_libc();
+    ! Add an __init_vars_foo() line for each of your program's modules here.
+
+    ! C functions take an explicit "stack pointer" as their first parameter.
+    ! The "stack" is where all subsequent function arguments are placed.
+    xp = __c_stack + __c_stack_size;
+    _main(xp);
+    @quit;
+];
