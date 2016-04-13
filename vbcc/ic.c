@@ -263,7 +263,7 @@ void add_IC(struct IC *new)
     if(!new) return;
     if(nocode) {
 #ifdef HAVE_MISRA
-/* removed */
+      misra_neu(52,14,1,-1);
 #endif
       /*free(new);*/ /* building a list to free later would be nice... */
       return;
@@ -428,7 +428,7 @@ void add_IC(struct IC *new)
             /*  momentan noch nicht perfekt, da es bei alloc/freereg stoppt */
                 free(new);
 #ifdef HAVE_MISRA
-/* removed */
+		misra_neu(52,14,1,-1);
 #endif
                 if(DEBUG&1) printf("Unreachable Statement deleted\n");
                 return;
@@ -2063,8 +2063,8 @@ void convert(np p,int f)
 
   if(p->flags==CEXPR||p->flags==PCEXPR){
 #ifdef HAVE_MISRA
-/* removed */
-/* removed */
+    if((o&NU)<(f&NU))
+      misra_neu(18,0,0,-1);
 #endif
     eval_constn(p);
     p->ntyp->flags=f;
