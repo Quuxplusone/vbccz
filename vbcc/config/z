@@ -1,0 +1,5 @@
+-cc=$VBCC/bin/vbccz -quiet %s -o=%s %s -O=%ld
+-ccv=$VBCC/bin/vbccz %s -o=%s %s -O=%ld
+-as=cp %s %s
+-ld=echo "Don't know how to link Z-machine code" 1>&2; exit 0
+-rm=rm %s
