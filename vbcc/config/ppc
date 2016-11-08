@@ -1,0 +1,5 @@
+-cc=$VBCC/bin/vbccppc -quiet %s -o=%s %s -O=%ld
+-ccv=$VBCC/bin/vbccppc %s -o=%s %s -O=%ld
+-as=cp %s %s
+-ld=echo "Don't know how to link PowerPC code" 1>&2; exit 0
+-rm=rm %s
