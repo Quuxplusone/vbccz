@@ -5,6 +5,9 @@ VBCCZ = ../vbcc/bin/vc +z -c99 -O1 -I../z-machine/include
 
 all: int.z8
 
+clean:
+	rm -rf .objs/ *.z8
+
 .objs/%/main.s: %.c
 	mkdir -p .objs/$(patsubst %.c,%,$<)
 	$(VBCCZ) -c $< -o $@ -module-name=main
@@ -14,3 +17,6 @@ all: int.z8
 
 ../z-machine/cstubs.s: ../z-machine/cstubs.c
 	$(VBCCZ) -c $< -o $@ -module-name=libc
+
+.PHONY: clean
+.PRECIOUS: .objs/%/main.s
