@@ -5,7 +5,7 @@ CFLAGS ?= -O3 -comment-ic -comment-misc
 VBCCZ = ../vbcc/bin/vc +z -c99 $(CFLAGS) -I../z-machine/include
 MAXES = \$$MAX_ZCODE_SIZE=40000
 
-ALL_TESTS = conversions.z8 \
+ALL_TESTS = conversions.z8 fptr.z8 \
     int.z8 \
     long.z8 \
     uint.z8 ulong.z8
