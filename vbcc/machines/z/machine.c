@@ -2159,7 +2159,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case LONG:
 						push_value(fp, &ic->q1, INT, &q1);
 						push_addrof(fp, &ic->z, typf, &z);
-						fprintf(fp, "\t@call_vn __long_fromchar");
+						fprintf(fp, "\t@call_vn __long_fromchar ");
 						emit_zop(fp, &z);
 						fprintf(fp, " ");
 						emit_zop(fp, &q1);
@@ -2197,7 +2197,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case LONG:
 						push_value(fp, &ic->q1, UNSIGNED|CHAR, &q1);
 						push_addrof(fp, &ic->z, typf, &z);
-						fprintf(fp, "\t@call_vn __long_fromint");
+						fprintf(fp, "\t@call_vn __long_loadconst ");
 						emit_zop(fp, &z);
 						fprintf(fp, " 0 ");
 						emit_zop(fp, &q1);
@@ -2235,6 +2235,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						break;
 
 					case LONG:
+					case UNSIGNED|LONG:
 						push_value(fp, &ic->q1, INT, &q1);
 						push_addrof(fp, &ic->z, typf, &z);
 						fprintf(fp, "\t@call_vn __long_fromint ");
@@ -2244,16 +2245,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						fprintf(fp, ";\n");
 						break;
 
-					case UNSIGNED|LONG:
-						push_value(fp, &ic->q1, INT, &q1);
-						push_addrof(fp, &ic->z, typf, &z);
-						fprintf(fp, "\t@call_vn __long_loadconst ");
-						emit_zop(fp, &z);
-						fprintf(fp, " 0 ");
-						emit_zop(fp, &q1);
-						fprintf(fp, ";\n");
-						break;
-					
 					default:
 						ierror(typf);
 				}

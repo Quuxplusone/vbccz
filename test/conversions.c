@@ -13,8 +13,8 @@ unsigned int uc_ui(unsigned char c) { return c; }
 
 //long sc_sl(signed char c) { return c; }
 //unsigned long sc_ul(signed char c) { return c; }
-//long uc_sl(unsigned char c) { return c; }
-//unsigned long uc_ul(unsigned char c) { return c; }
+long uc_sl(unsigned char c) { return c; }
+unsigned long uc_ul(unsigned char c) { return c; }
 
 int ss_si(signed short c) { return c; }
 unsigned int ss_ui(signed short c) { return c; }
@@ -43,8 +43,8 @@ int main()
     assert(uc_ui(42) == 42u);
     //assert(sc_sl(42) == 42L);
     //assert(sc_ul(42) == 42uL);
-    //assert(uc_sl(42) == 42L);
-    //assert(uc_ul(42) == 42uL);
+    assert(uc_sl(42) == 42L);
+    assert(uc_ul(42) == 42uL);
     assert(ss_si(42) == 42);
     assert(ss_ui(42) == 42u);
     assert(us_si(42) == 42);
@@ -68,18 +68,18 @@ int main()
     assert(uc_ui(-42) == 256 - 42);
     //assert(sc_sl(-42) == -42L);
     //assert(sc_ul(-42) == 0uL - 42uL);
-    //assert(uc_sl(-42) == 256 - 42);
-    //assert(uc_ul(-42) == 256 - 42);
+    assert(uc_sl(-42) == 256 - 42);
+    assert(uc_ul(-42) == 256 - 42);
     assert(ss_si(-42) == -42);
     assert(ss_ui(-42) == 0u - 42u);
     assert(us_si(-42) == -42);
     assert(us_ui(-42) == 0u - 42u);
     assert(ss_sl(-42) == -42L);
-    //assert(ss_ul(-42) == 0uL - 42uL);
+    assert(ss_ul(-42) == 0uL - 42uL);
     assert(us_sl(-42) == 65536L - 42L);
     assert(us_ul(-42) == 65536uL - 42uL);
     assert(si_sl(-42) == -42L);
-    //assert(si_ul(-42) == 0uL - 42uL);
+    assert(si_ul(-42) == 0uL - 42uL);
     assert(ui_sl(-42) == 65536L - 42L);
     assert(ui_ul(-42) == 65536uL - 42uL);
 
