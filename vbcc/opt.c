@@ -1014,7 +1014,7 @@ static int to_be_inlined(struct Var *v)
   if(c>inline_size) return 0;
   /* we assume that inlining saves size if the number of arguments
      is larger than the number of ICs + CALL +SETRETURN  */
-  if(optsize&&c-2>(c=v->vtyp->exact->count)) return 0;
+  if(optsize&&c-2>(v->vtyp->exact->count)) return 0;
   return 1;
 }
 
