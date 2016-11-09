@@ -1266,7 +1266,7 @@ static void push_value(FILE* fp, struct obj* obj, int typf, struct zop* op)
 			case UNSIGNED|SHORT:	op->val.constant = obj->val.vushort;	break;
 			case INT:		op->val.constant = obj->val.vint;	break;
 			case UNSIGNED|INT:	op->val.constant = obj->val.vuint;	break;
-		case POINTER:		ierror(0);
+			case POINTER:		op->val.constant = obj->val.vulong;	break;
 			default:
 				fprintf(fp, "XXX !!! bad konst type %X\n", typf);
 		}
