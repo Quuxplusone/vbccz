@@ -68,6 +68,7 @@ int g_flags[MAXGF] = {
 	0,
 	0,
 	0,
+	0,
 	0
 };
 char *g_flags_name[MAXGF] = {
@@ -76,7 +77,8 @@ char *g_flags_name[MAXGF] = {
 	"trace-all",
 	"safe-branches",
 	"comment-ic",
-	"comment-misc"
+	"comment-misc",
+	"patch-not"
 };
 union ppi g_flags_val[MAXGF];
 
@@ -1738,13 +1740,22 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case CHAR:
 					case SHORT:
 					case INT:
-						/* INFORM BUG! */
-						/* The @not opcode doesn't work. We have to use a
-						 * wrapper function instead. */
-
 						push_value(fp, &ic->q1, typf, &q1);
 						pop_value(fp, &ic->z, typf, &z);
-						fprintf(fp, "\t@call_2s __not ");
+						if (g_flags[6] & USEDFLAG) {
+							/* Prior to Inform 6.30, the assembler
+							 * had a major bug in the @not opcode;
+							 * it would generate bogus code and
+							 * crash some Z-machine interpreters.
+							 * http://www.inform-fiction.org/patches/C62105.html */
+							fprintf(fp, "\t@call_2s __not ");
+						} else {
+							/* The bug was fixed in Inform 6.30.
+							 * The current distribution of Inform 6
+							 * is 6.31; the version distributed
+							 * with Inform 7 is 6.32. */
+							fprintf(fp, "\t@not ");
+						}
 						emit_zop(fp, &q1);
 						fprintf(fp, " -> ");
 						emit_zop(fp, &z);
