@@ -1096,7 +1096,7 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 			case UNSIGNED|CHAR:	c.val.constant = obj->val.vuchar;	break;
 			case SHORT:		c.val.constant = obj->val.vshort;	break;
 			case UNSIGNED|SHORT:	c.val.constant = obj->val.vushort;	break;
-		case POINTER:	      ierror(0);
+			case POINTER:		c.val.constant = obj->val.vulong;	break;
 			case INT:		c.val.constant = obj->val.vint;		break;
 			case UNSIGNED|INT:	c.val.constant = obj->val.vuint;	break;
 			default:
