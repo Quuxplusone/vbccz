@@ -18,7 +18,7 @@ struct AddressingMode{
 
 /* Number of command-line options we accept. */
 
-#define MAXGF 6
+#define MAXGF 7
 
 /* If this is set to zero vbcc will not generate ICs where the target operand
  * is the same as the 2nd source operand. This can sometimes simplify the
