@@ -2651,13 +2651,13 @@ void cleanup_cg(FILE *fp)
 				case STATIC:
 					fprintf(fp, "\t@storew STATIC_%s_%d (%d) sp;\n",
 						modulename, fixup->identifier.val.number,
-						fixup->identifier.offset);
+						fixup->identifier.offset >> 1);
 					break;
 
 				case EXTERN:
 					fprintf(fp, "\t@storew _%s (%d) sp;\n",
 						fixup->identifier.val.identifier,
-						fixup->identifier.offset);
+						fixup->identifier.offset >> 1);
 					break;
 
 				default:
