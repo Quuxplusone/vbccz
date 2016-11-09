@@ -757,7 +757,13 @@ void gen_var_head(FILE* fp, struct Var* var)
 
 void gen_ds(FILE *fp, zmax size, struct Typ *typ)
 {
-	fprintf(fp, " %ld\n", size);
+	if (size == 1 || currentvar.offset != 0) {
+		for (int i=0; i < (int)size; ++i) {
+			fprintf(fp, " (0)\n");
+		}
+	} else {
+		fprintf(fp, " %d\n", (int)size);
+	}
 	currentvar.offset += size;
 }
 
