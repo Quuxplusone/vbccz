@@ -1071,12 +1071,6 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 	int flags = obj->flags &
 		(KONST|REG|VAR|DREFOBJ|VARADR);
 
-	/* The only thing you can do with a function is to take the address of
-	 * it. */
-
-	if ((typf & NQ) == FUNKT)
-		flags &= ~DREFOBJ & ~VARADR;
-
 	/* Is this a memory dereference? */
 
 	if (flags & DREFOBJ)
@@ -1224,7 +1218,7 @@ dereference:
 	obj->flags &= ~DREFOBJ;
 	read_reg(fp, obj, POINTER, 0);
 		
-	if (flags & DREFOBJ)
+	if ((flags & DREFOBJ) && typf != FUNKT)
 	{
 		switch (typf & NQ)
 		{
