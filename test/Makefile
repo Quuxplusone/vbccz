@@ -3,7 +3,7 @@ export VBCC:=../vbcc
 
 VBCCZ = ../vbcc/bin/vc +z -c99 -O1 -I../z-machine/include
 
-all: arrays.z8 calls.z8 fptr.z8 int.z8
+all: arrays.z8 calls.z8 conversions.z8 fptr.z8 int.z8
 
 clean:
 	rm -rf .objs/ *.z8
