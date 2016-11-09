@@ -122,7 +122,7 @@ Array __long_temp3 -> 4;
 ];
 
 [ __long_asr q1 q2 z  s t;
-	if ((q2-->0 ~= 0) || (((q2-->1)-32768) > (31-32768)))
+	if ((q2-->0 ~= 0) || (((q2-->1)-32768) > -32737))
 	{
 		! All bits shifted off; so we just propagate the sign.
 
@@ -157,7 +157,7 @@ Array __long_temp3 -> 4;
 ];
 	
 [ __long_lsr q1 q2 z  s t;
-	if ((q2-->0 ~= 0) || ((q2-->1-32768) > (31-32768)))
+	if ((q2-->0 ~= 0) || ((q2-->1-32768) > -32737))
 	{
 		! All bits shifted off; the result is zero.
 
