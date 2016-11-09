@@ -3084,14 +3084,14 @@ void gen_vars(struct Var *v)
             /*  und dann der Rest   */
             if(mode==2&&p->clist) continue;
             if(!(p->flags&(TENTATIVE|DEFINED))){
-              if(!((p->vtyp->flags&NQ)==FUNKT)||!p->fi||!p->fi->inline_asm)
+              if(((p->vtyp->flags&NQ)!=FUNKT)||!p->fi||!p->fi->inline_asm)
                 gen_var_head(out,p);
               if(p->storage_class==STATIC&&(!p->fi||!p->fi->inline_asm)) error(127,p->identifier);
               continue;
             }else{
               /*gen_align(out,falign(p->vtyp));*/
             }
-            if(!(p->vtyp->flags&NQ)==FUNKT||!p->fi||!p->fi->inline_asm)
+            if(((p->vtyp->flags&NQ)!=FUNKT)||!p->fi||!p->fi->inline_asm)
               gen_var_head(out,p);
             if(!p->clist){
               if(type_uncomplete(p->vtyp)) error(202,p->identifier);
