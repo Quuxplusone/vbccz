@@ -243,8 +243,8 @@ enum {
 
 /* Some useful zops. */
 
-struct zop zop_zero = {ZOP_CONSTANT, {constant: 0}};
-struct zop zop_xp = {ZOP_REG, {reg: XP}};
+struct zop zop_zero = {ZOP_CONSTANT, {.constant = 0}};
+struct zop zop_xp = {ZOP_REG, {.reg = XP}};
 struct zop zop_stack = {ZOP_STACK, 0};
 
 /* Temporaries used to store comparison register numbers. */
@@ -441,11 +441,11 @@ static void dump_obj(FILE* fp, struct obj* obj, int typf)
 				break;
 
 			case FLOAT:
-				fprintf(fp, "[float #%04X]", obj->val.vfloat);
+				fprintf(fp, "[float #%f]", obj->val.vfloat);
 				break;
 
 			case DOUBLE:
-				fprintf(fp, "[double #%08X]", obj->val.vdouble);
+				fprintf(fp, "[double #%f]", obj->val.vdouble);
 				break;
 
 			case POINTER:
@@ -470,10 +470,10 @@ static void dump_obj(FILE* fp, struct obj* obj, int typf)
 			zmax offset = obj->v->offset;
 			//if (offset < 0)
 			//	offset = -(offset+maxalign);
-			fprintf(fp, " at fp%+d", offset);
+			fprintf(fp, " at fp%+ld", offset);
 		}
 
-		fprintf(fp, "+%ld", obj->val.vlong);
+		fprintf(fp, "+%d", obj->val.vlong);
 
 		if (f & REG)
 			fprintf(fp, " in %s", regnames[obj->reg]);
@@ -988,7 +988,7 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 			{
 				fprintf(fp, "\t@storeb ");
 				emit_identifier(fp, obj);
-				fprintf(fp, " 0%+ld %s;\n",
+				fprintf(fp, " 0%+d %s;\n",
 					obj->val.vlong, regnames[reg]);
 			}
 			else
@@ -997,7 +997,7 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 				{
 					fprintf(fp, "\t@add ");
 					emit_identifier(fp, obj);
-					fprintf(fp, " 0%+ld -> sp;\n",
+					fprintf(fp, " 0%+d -> sp;\n",
 						obj->val.vlong);
 					fprintf(fp, "\t@storew sp 0 %s;\n",
 						regnames[reg]);
@@ -1006,7 +1006,7 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 				{
 					fprintf(fp, "\t@storew ");
 					emit_identifier(fp, obj);
-					fprintf(fp, " 0%+ld %s;\n",
+					fprintf(fp, " 0%+d %s;\n",
 						obj->val.vlong >> 1, regnames[reg]);
 				}
 			}
@@ -1170,12 +1170,12 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 
 					fprintf(fp, "\t@add ");
 					emit_identifier(fp, obj);
-					fprintf(fp, " 0%+ld -> %s;\n",
+					fprintf(fp, " 0%+d -> %s;\n",
 						obj->val.vlong, regnames[reg]);
 				}
 				else if (strcmp(obj->v->identifier, "__va_start") == 0)
 				{
-					fprintf(fp, "\t@add xp 0%+ld -> %s;\n",
+					fprintf(fp, "\t@add xp 0%+d -> %s;\n",
 						find_varargs(), regnames[reg]);
 				}
 				else
@@ -1186,7 +1186,7 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 					{
 						fprintf(fp, "\t@loadb ");
 						emit_identifier(fp, obj);
-						fprintf(fp, " 0%+ld -> %s;\n",
+						fprintf(fp, " 0%+d -> %s;\n",
 							obj->val.vlong, regnames[reg]);
 					}
 					else
@@ -1195,7 +1195,7 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 						{
 							fprintf(fp, "\t@add ");
 							emit_identifier(fp, obj);
-							fprintf(fp, " 0%+ld -> sp;\n",
+							fprintf(fp, " 0%+d -> sp;\n",
 								obj->val.vlong);
 							fprintf(fp, "\t@loadw sp 0 -> %s;\n",
 								regnames[reg]);
@@ -1204,7 +1204,7 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 						{
 							fprintf(fp, "\t@loadw ");
 							emit_identifier(fp, obj);
-							fprintf(fp, " 0%+ld -> %s;\n",
+							fprintf(fp, " 0%+d -> %s;\n",
 								obj->val.vlong >> 1, regnames[reg]);
 						}
 					}
@@ -1230,7 +1230,7 @@ dereference:
 		{
 			case CHAR:
 				fprintf(fp, "\t@loadb sp 0 -> %s;\n",
-					regnames[reg], regnames[reg]);
+					regnames[reg]);
 				break;
 
 			case SHORT:
@@ -1238,7 +1238,7 @@ dereference:
 			case POINTER:
 			case FUNKT:
 				fprintf(fp, "\t@loadw sp 0 -> %s;\n",
-					regnames[reg], regnames[reg]);
+					regnames[reg]);
 				break;
 
 			default:
@@ -1404,7 +1404,7 @@ static void emit_zop(FILE* fp, struct zop* op)
 			return;
 
 		case ZOP_CONSTANT:
-			fprintf(fp, "0%+ld", (zshort)op->val.constant);
+			fprintf(fp, "0%+d", (zshort)op->val.constant);
 			return;
 
 		case ZOP_EXTERN:
@@ -1585,7 +1585,7 @@ static void move_long_value(FILE* fp, struct obj* q1, struct obj* z, int typf)
 		push_addrof(fp, z, POINTER, &zz);
 		fprintf(fp, "\t@call_vn __long_loadconst ");
 		emit_zop(fp, &zz);
-		fprintf(fp, " 0%+ld 0%+ld;\n", (short)hi, (short)lo);
+		fprintf(fp, " 0%+d 0%+d;\n", (short)hi, (short)lo);
 		return;
 	}
 
@@ -1912,7 +1912,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						emit_zop(fp, &q1);
 						fprintf(fp, " ");
 						emit_zop(fp, &z);
-						fprintf(fp, " 0%+ld;\n", ic->q2.val.vlong);
+						fprintf(fp, " 0%+d;\n", ic->q2.val.vlong);
 						break;
 
 					default:
@@ -1924,14 +1924,14 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					 AUTO or STATIC */
 				i = voff(&ic->q1);
 				pop_value(fp, &ic->z, typf, &z);
-				fprintf(fp, "\t@add xp 0%+ld -> ", i);
+				fprintf(fp, "\t@add xp 0%+d -> ", i);
 				emit_zop(fp, &z);
 				fprintf(fp, ";\n");
 				fin_zop(fp, &ic->z, typf, &z);
 				continue;
 
 			case PUSH: /* Push a value onto the stack */
-				fprintf(fp, "\t@sub xp 0%+ld -> xp;\n",
+				fprintf(fp, "\t@sub xp 0%+d -> xp;\n",
 					ic->q2.val.vlong);
 				//stackoffset += ic->q2.val.vlong;
 				stackparamadjust += ic->q2.val.vlong;
@@ -1956,7 +1956,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						push_addrof(fp, &ic->q1, typf, &q1);
 						fprintf(fp, "\t@copy_table ");
 						emit_zop(fp, &q1);
-						fprintf(fp, " xp 0%+ld;\n", ic->q2.val.vlong);
+						fprintf(fp, " xp 0%+d;\n", ic->q2.val.vlong);
 						break;
 				}
 				continue;
@@ -2451,7 +2451,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						q2.type = ZOP_CONSTANTADDR;
 						q2.val.constant = addconstant(0);
 						emit_zop(fp, &q2);
-						fprintf(fp, " -> sp;\n", i);
+						fprintf(fp, " -> sp;\n");
 						compare1.type = ZOP_STACK;
 						compare2.type = ZOP_CONSTANT;
 						compare2.val.constant = 0;
@@ -2547,7 +2547,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 
 				if (stackparamadjust)
 				{
-					fprintf(fp, "\t@add xp 0%+ld -> xp;\n",
+					fprintf(fp, "\t@add xp 0%+d -> xp;\n",
 						stackparamadjust);
 					//stackoffset -= stackparamadjust;
 					stackparamadjust = 0;
@@ -2622,9 +2622,9 @@ void cleanup_cg(FILE *fp)
 
 		while (constant)
 		{
-			fprintf(fp, "Array CONSTANT_%s_%ld -->\n",
+			fprintf(fp, "Array CONSTANT_%s_%d -->\n",
 				modulename, constant->id);
-			fprintf(fp, " 0%+ld 0%+ld;\n",
+			fprintf(fp, " 0%+d 0%+d;\n",
 				xword(constant->value, 1),
 				xword(constant->value, 0));
 			constant = constant->next;
@@ -2644,7 +2644,7 @@ void cleanup_cg(FILE *fp)
 			switch (fixup->value.type)
 			{
 				case STATIC:
-					fprintf(fp, "STATIC_%s_%ld -> sp;\n",
+					fprintf(fp, "STATIC_%s_%d -> sp;\n",
 						modulename, fixup->value.val.number);
 					break;
 
@@ -2660,13 +2660,13 @@ void cleanup_cg(FILE *fp)
 			switch (fixup->identifier.type)
 			{
 				case STATIC:
-					fprintf(fp, "\t@storew STATIC_%s_%ld 0%+ld sp;\n",
+					fprintf(fp, "\t@storew STATIC_%s_%d 0%+d sp;\n",
 						modulename, fixup->identifier.val.number,
 						fixup->identifier.offset);
 					break;
 
 				case EXTERN:
-					fprintf(fp, "\t@storew _%s 0%+ld sp;\n",
+					fprintf(fp, "\t@storew _%s 0%+d sp;\n",
 						fixup->identifier.val.identifier,
 						fixup->identifier.offset);
 					break;
