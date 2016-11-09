@@ -2545,12 +2545,10 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 				/* If any parameters have been pushed, adjust
 				 * the stack to pop them. */
 
-				if (stackparamadjust)
-				{
-					fprintf(fp, "\t@add xp (%d) -> xp;\n",
-						stackparamadjust);
-					//stackoffset -= stackparamadjust;
-					stackparamadjust = 0;
+				int this_call_adjust = pushedargsize(ic);
+				if (this_call_adjust) {
+					fprintf(fp, "\t@add xp (%d) -> xp;\n", this_call_adjust);
+					stackparamadjust -= this_call_adjust;
 				}
 				continue;
 			}
