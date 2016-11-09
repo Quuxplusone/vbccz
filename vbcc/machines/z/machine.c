@@ -2148,7 +2148,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						fprintf(fp, "\t@log_shift ");
 						emit_zop(fp, &q1);
 						fprintf(fp, " 8 -> sp;\n");
-						fprintf(fp, "\t@art_shift sp 0-8 -> ");
+						fprintf(fp, "\t@art_shift sp (-8) -> ");
 						emit_zop(fp, &z);
 						fprintf(fp, ";\n");
 						fin_zop(fp, &ic->z, typf, &z);
