@@ -1,5 +1,6 @@
 /*  $VER: vbcc (ic.c) $Revision: 1.65 $  */
 
+#include <assert.h>
 #include "vbc.h"
 #include "opt.h"
 
@@ -583,6 +584,199 @@ np gen_libcall(char *fname,np arg1,type *t1,np arg2,type *t2)
   return new;
 }
 
+#if INLINE_PUTS_ON_Z_MACHINE
+
+/* This function serves a dual purpose: it turns the const_list into a nice
+ * C string, but it also checks to see if it's null-terminated, and if
+ * it's not, we simply return NULL. Our caller is responsible for doing the
+ * right thing in that case. */
+static char *const_list_to_string(struct const_list *cl)
+{
+    int len = 0;
+    for (struct const_list *cx = cl; cx != NULL; cx = cx->next, ++len) {
+        int ch = cx->other->val.vchar;
+        switch (ch) {
+            case '\0': if (cx->next != NULL) return NULL; break;
+            case '\t': case '\n': /* okay */ break;
+            default:
+                if (cx->next == NULL) return NULL;  /* not null-terminated */
+                break;
+        }
+    }
+    /* Okay, the string is a valid, printable string. */
+    char *text = mymalloc(len);
+    int i = 0;
+    for (struct const_list *cx = cl; cx != NULL; cx = cx->next, ++i) {
+        text[i] = cx->other->val.vchar;
+    }
+    return text;
+}
+
+static struct const_list *string_to_const_list(const char *text)
+{
+    struct const_list *cl = NULL;
+    struct const_list **pp = &cl;
+    for (int i=0; /*true*/; ++i) {
+        *pp = mymalloc(CLS);
+        (*pp)->tree = NULL;
+        (*pp)->idx = i;
+        (*pp)->val.vmax = 0;
+        (*pp)->other = mymalloc(CLS);
+        (*pp)->other->next = (*pp)->other->other = NULL;
+        (*pp)->other->tree = NULL;
+        (*pp)->other->idx = 0;
+        (*pp)->other->val.vchar = text[i];
+        pp = &(*pp)->next;
+        *pp = NULL;
+        if (text[i] == '\0')
+            break;
+    }
+    return cl;
+}
+
+static void emit_print_num(np p, struct argument_list *arg)
+{
+    assert(strcmp(p->left->left->o.v->identifier, "printf") == 0);
+
+    static struct Var *internal_print_num = NULL;
+    static struct Typ *voidfunc_ptr_typ = NULL;
+    if (internal_print_num == NULL) {
+        struct Typ voidt = {VOID};
+        struct Typ *voidfunctyp = new_typ();
+        voidfunctyp->next = clone_typ(&voidt);  /* returning void */
+        voidfunctyp->exact = mymalloc(sizeof *voidfunctyp->exact);
+        voidfunctyp->exact->count = 0;  /* taking unspecified arguments */
+        voidfunctyp->flags = FUNKT;
+        internal_print_num = add_var("XXinternal_print_num", voidfunctyp, EXTERN, NULL);
+        internal_print_num->fi = new_fi();
+        internal_print_num->fi->inline_asm = malloc(sizeof("\t@print_num r0;\n"));
+        strcpy(internal_print_num->fi->inline_asm, "\t@print_num r0;\n");
+
+        voidfunc_ptr_typ = new_typ();
+        voidfunc_ptr_typ->next = clone_typ(voidfunctyp);
+        voidfunc_ptr_typ->flags = POINTER_TYPE(voidfunc_ptr_typ->next);
+    }
+
+    struct argument_list *saved_alist = p->alist;
+    struct Var *saved_ov = p->left->left->o.v;
+    struct Typ *saved_ntyp = p->left->ntyp;
+    p->alist = arg;
+    assert(arg->next == NULL);
+    p->left->left->o.v = internal_print_num;
+    p->left->ntyp = voidfunc_ptr_typ;
+    gen_IC(p, /*ltrue=*/0, /*lfalse=*/0);
+
+    p->left->left->o.v = saved_ov;
+    p->left->ntyp = saved_ntyp;
+    p->alist = saved_alist;
+}
+
+/* Emit a call to printf() with the given arguments. We expect that parameter "p"
+ * will point to an existing printf call, so all we need to do is swap out the
+ * arguments. */
+static void emit_printf(np p, const char *fmt, struct argument_list *other_args)
+{
+    struct argument_list *al = p->alist;
+    assert(al->arg->flags == ADDRESSA);
+    assert(al->arg->left->flags == STRING);
+    struct const_list *saved_cl = al->arg->left->cl;
+    struct const_list *cl = string_to_const_list(fmt);
+    al->arg->left->cl = cl;
+    /* Shrink the declared size of the string literal's char-array type. */
+    int saved_size = al->arg->left->ntyp->size;
+    int length = 0;
+    for (struct const_list *sx = cl; sx; sx = sx->next)
+        ++length;
+    assert(length >= 1);
+    al->arg->left->ntyp->size = length;
+
+    struct argument_list *saved_alist = p->alist;
+    struct argument_list *new_alist = mymalloc(sizeof(struct argument_list));
+    new_alist->arg = al->arg;
+    new_alist->next = other_args;
+    p->alist = new_alist;
+
+    assert(strcmp(p->left->left->o.v->identifier, "printf") == 0);
+    gen_IC(p, /*ltrue=*/0, /*lfalse=*/0);
+
+    p->alist = saved_alist;
+    al->arg->left->cl = saved_cl;
+    al->arg->left->ntyp->size = saved_size;
+    free(new_alist);
+}
+
+static void emit_puts(np p, const char *text)
+{
+    extern const char *z_optimize_puts_name;
+    assert(*text != '\0');
+    int cap = strlen(z_optimize_puts_name) + strlen(text) + 16;
+    char *inline_asm = mymalloc(cap);
+
+    sprintf(inline_asm, "\t%s(\"", z_optimize_puts_name);
+    int len = strlen(inline_asm);
+    for (int i=0; text[i] != '\0'; ++i) {
+        cap += strlen(z_optimize_puts_name) + 32;
+        inline_asm = myrealloc(inline_asm, cap);
+        if ((text[i] & 0x80) != 0) {
+            unsigned int w = text[i] & 0xFF;
+            if (0xC2 <= w && w <= 0xDF) {
+                w &= 0x1F;
+                w = (w << 6) | (text[++i] & 0x3F);
+            } else if (0xE0 <= w && w <= 0xEF) {
+                w &= 0x0F;
+                w = (w << 6) | (text[++i] & 0x3F);
+                w = (w << 6) | (text[++i] & 0x3F);
+            } else {
+                ierror(0);  /* unsupported or invalid UTF-8 encoding */
+            }
+            sprintf(inline_asm+len, "\");\n"
+                                    "\t@print_unicode $%04X;\n"
+                                    "\t%s(\"", w, z_optimize_puts_name);
+            len = strlen(inline_asm);
+        } else if (text[i] == '^' || text[i] == '~') {
+            sprintf(inline_asm+len, "@@%d\");\n"
+                                    "\t%s(\"", text[i], z_optimize_puts_name);
+            len = strlen(inline_asm);
+        } else {
+            switch (text[i]) {
+                case '\n': inline_asm[len++] = '^'; break;
+                case '\t': strcpy(inline_asm+len, "@{9}"); len += 4; break;
+                case '"': inline_asm[len++] = '~'; break;
+                case '@': strcpy(inline_asm+len, "@{40}"); len += 5; break;
+                case '\\': strcpy(inline_asm+len, "@{5c}"); len += 5; break;
+                default:
+                    /* This should have been assured by const_list_to_string(). */
+                    assert(32 <= text[i] && text[i] <= 126);
+                    inline_asm[len++] = text[i];
+                    break;
+            }
+        }
+    }
+    strcpy(inline_asm+len, "\");\n"); len += 3;
+
+    char pfname[50];
+    static int counter = 0;
+    struct Typ voidt = {VOID};
+    struct Typ *voidfunctyp = new_typ();
+    sprintf(pfname, "XXinternal_pf_%07x_puts", ++counter);
+    voidfunctyp->next = clone_typ(&voidt);  /* returning void */
+    voidfunctyp->exact = mymalloc(sizeof *voidfunctyp->exact);
+    voidfunctyp->exact->count = 0;  /* taking unspecified arguments */
+    voidfunctyp->flags = FUNKT;
+    struct Var *pseudofunc = add_var(pfname, voidfunctyp, EXTERN, NULL);
+    pseudofunc->fi = new_fi();
+    pseudofunc->fi->inline_asm = inline_asm;
+
+    struct Var *saved_v = p->left->left->o.v;
+    struct argument_list *saved_alist = p->alist;
+    p->left->left->o.v = pseudofunc;
+    p->alist = NULL;
+    gen_IC(p, /*ltrue=*/0, /*lfalse=*/0);
+    p->left->left->o.v = saved_v;
+    p->alist = saved_alist;
+}
+
+#endif /* INLINE_PUTS_ON_Z_MACHINE */
 
 void gen_IC(np p,int ltrue,int lfalse)
 /*  Erzeugt eine IC-Liste aus einer expression      */
@@ -1116,6 +1310,132 @@ void gen_IC(np p,int ltrue,int lfalse)
         IC *merk_fp,*lp;
 	unsigned int merk_opushed=opushed;
 #endif
+
+#if INLINE_PUTS_ON_Z_MACHINE
+	/* [ajo] The following code optimizes puts("hello") into a single
+	 * Z-machine opcode: print "hello". This cuts down a little bit on
+	 * code size, but greatly on static data size, because (as far as I
+	 * know) the Z-machine stores text strings differently from regular
+	 * static data. */
+        if (ltrue == 0 && lfalse == 0 &&
+	    p->left->flags==ADDRESS &&
+            p->left->left->flags==IDENTIFIER &&
+            p->left->left->o.v->storage_class==EXTERN &&
+            !strcmp(p->left->left->o.v->identifier, "puts")) {
+            /* Generating IC for puts() of something */
+            struct argument_list *al = p->alist;
+            if (al != NULL && al->arg != NULL && al->arg->flags == ADDRESSA &&
+                al->arg->left != NULL && al->arg->left->flags == STRING &&
+		al->next == NULL) {
+                /* Generating IC for puts() of a string literal */
+                char *text = const_list_to_string(al->arg->left->cl);
+		if (text != NULL) {
+		    text = myrealloc(text, strlen(text)+2);
+		    strcat(text, "\n");
+		    emit_puts(p, text);
+		    free(text);
+		    return;
+		}
+            }
+        }
+
+	/* [ajo] The following code optimizes printf("prefix%ssuffix\n", arg)
+	 * into printf("prefix%s", arg); puts("suffix");
+	 * Again, this is very useful on the Z-machine. */
+        if (ltrue == 0 && lfalse == 0 &&
+	    p->left->flags==ADDRESS &&
+            p->left->left->flags==IDENTIFIER &&
+            p->left->left->o.v->storage_class==EXTERN &&
+            !strcmp(p->left->left->o.v->identifier, "printf")) {
+            /* Generating IC for printf() of something */
+            struct argument_list *al = p->alist;
+            if (al != NULL && al->arg != NULL && al->arg->flags == ADDRESSA &&
+                al->arg->left != NULL && al->arg->left->flags == STRING) {
+                /* Generating IC for printf("literal", ...) */
+		char *fmt = const_list_to_string(al->arg->left->cl);
+		if (fmt == NULL) {
+		    /* The format string contains some unprintable characters.
+		     * Fall back on the standard library's printf()
+		     * implementation. */
+		} else if (strcmp(fmt, "%s") == 0) {
+		    /* This should compile to fputs(), but for now let's allow
+		     * it also to fall back on the default printf(). */
+		} else if (fmt[0] == '%' && fmt[1] != 'd' && fmt[1] != 's') {
+		    /* The format string *begins* with an unrecognized
+		     * format specifier. We can't optimize this one. */
+		} else {
+		    int start = 0;
+		    int end;
+		    struct argument_list *current_argument = al->next;
+		    for (end = 0; fmt[end] != '\0'; ) {
+			if (fmt[end] != '%') {
+			    ++end;
+			    continue;
+			}
+			/* We've hit a format specifier. */
+			if (start != end) {
+			    /* There's some plaintext to print before we
+			     * get to this format specifier. */
+			    fmt[end] = '\0';
+			    emit_puts(p, fmt+start);
+			    fmt[end] = '%';
+			    start = end;
+			}
+			assert(start == end);
+			assert(fmt[start] == '%');
+			if (fmt[start+1] == 'd') {
+			    struct argument_list *saved_al = current_argument->next;
+			    current_argument->next = NULL;
+			    emit_print_num(p, current_argument);
+			    current_argument->next = saved_al;
+			    /* Advance to the next unconsumed argument. */
+			    current_argument = current_argument->next;
+			    start = end = start+2;
+			} else if (fmt[start+1] == 's') {
+			    struct argument_list *saved_al = current_argument->next;
+			    current_argument->next = NULL;
+			    /* Recurse to handle this one. */
+			    emit_printf(p, "%s", current_argument);
+			    current_argument->next = saved_al;
+			    /* Advance to the next unconsumed argument. */
+			    current_argument = current_argument->next;
+			    start = end = start+2;
+			} else if (fmt[start+1] == '%') {
+			    emit_puts(p, "%");
+			    start = end = start+2;
+			} else {
+			    /* This format specifier is unrecognized. It might
+			     * for example be "%x" or "%02.5d". We must be
+			     * conservative and fall back on the standard
+			     * library's printf() for the entire rest of the
+			     * format string. */
+			    emit_printf(p, fmt+start, current_argument);
+			    free(fmt);
+			    return;
+			}
+		    }
+		    if (start != end) {
+			/* There's plaintext at the end of the format string. */
+			emit_puts(p, fmt+start);
+		    }
+		    /* If we've reached here, we're done emitting the
+		     * optimized code, and we can stop. But we do need
+		     * to make sure we've evaluated all the arguments,
+		     * even if the user wrote something like
+		     *     printf("hello world\n", ++foo);
+		     * where the arguments go unused. */
+		    while (current_argument != NULL) {
+			gen_IC(current_argument->arg, /*ltrue=*/0, /*lfalse=*/0);
+			current_argument = current_argument->next;
+		    }
+		    free(fmt);
+		    return;
+		}
+		free(fmt);
+	    }
+        }
+#endif /* INLINE_PUTS_ON_Z_MACHINE */
+
         if(p->left->flags==ADDRESS&&p->left->left->flags==IDENTIFIER){
             Var *v;
             gen_IC(p->left,0,0); r=1;

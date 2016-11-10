@@ -69,7 +69,8 @@ int g_flags[MAXGF] = {
 	0,
 	0,
 	0,
-	0
+	0,
+	STRINGFLAG
 };
 char *g_flags_name[MAXGF] = {
 	"module-name",
@@ -78,7 +79,8 @@ char *g_flags_name[MAXGF] = {
 	"safe-branches",
 	"comment-ic",
 	"comment-misc",
-	"patch-not"
+	"patch-not",
+	"opt-puts"
 };
 union ppi g_flags_val[MAXGF];
 
@@ -198,6 +200,10 @@ static char* labelprefix = "L";
  * the constant pool. */
 
 static char* modulename;
+
+/* Name of the function to use for "puts" optimization. */
+
+const char *z_optimize_puts_name;
 
 /* Stack frame layout:
  *
@@ -578,6 +584,10 @@ int init_cg(void)
 	modulename = g_flags_val[0].p;
 	if (!modulename)
 		modulename = "";
+
+	z_optimize_puts_name = g_flags_val[7].p;
+	if (!z_optimize_puts_name)
+		z_optimize_puts_name = "print (string) ";
 
   /*  Initialize the min/max-settings. Note that the types of the     */
   /*  host system may be different from the target system and you may */
