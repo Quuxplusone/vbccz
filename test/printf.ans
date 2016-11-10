@@ -1,0 +1,16 @@
+TEST 1  single > '    <
+TEST 2  double > "    <
+TEST 3  smart  > ”    <
+TEST 4  caret  > ^    <
+TEST 5  tilde  > ~    <
+TEST 6  at     > @    <
+TEST 7  back   > \    <
+TEST 8  slash  > /    <
+TEST 9  curly  > {    <
+TEST 10 curly  > }    <
+TEST 11 caret0 > ^0   <
+TEST 12 tilde0 > ~0   <
+TEST 13 @caret > @^   <
+TEST 14 @tilde > @~   <
+TEST 15 atat94 > @@94 <
+SUCCESS!
