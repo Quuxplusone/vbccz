@@ -6,8 +6,8 @@ long sub(long x, long y) { return x - y; }
 long mul(long x, long y) { return x * y; }
 long div(long x, long y) { return x / y; }
 long mod(long x, long y) { return x % y; }
-//long lsh(long x, long y) { return x << y; }
-//long rsh(long x, long y) { return x >> y; }
+long lsh(long x, long y) { return x << y; }
+long rsh(long x, long y) { return x >> y; }
 long and_(long x, long y) { return x & y; }
 long or_(long x, long y) { return x | y; }
 long xor_(long x, long y) { return x ^ y; }
@@ -29,10 +29,10 @@ int main()
     assert(div(20,6) == 3);
     assert(mod(20,6) == 2);
     assert(mod(20,20) == 0);
-    //assert(lsh(20,2) == 80);
-    //assert(rsh(25,2) == 6);
-    //assert(lsh(-20,2) == -80);
-    //assert(rsh(-25,2) == -7);
+    assert(lsh(20,2) == 80);
+    assert(rsh(25,2) == 6);
+    assert(lsh(-20,2) == -80);
+    assert(rsh(-25,2) == -7);
     assert(and_(0x8765, 0x1234) == 0x0224);
     assert(or_(0x8765, 0x1234) == 0x9775);
     assert(xor_(0x8765, 0x1234) == 0x9551);
@@ -43,8 +43,8 @@ int main()
     assert(oror(0,0) == 0);
     assert(bang(0) == 1);
     assert(bang(256) == 0);
-    //assert(not_(0) == -1);
-    //assert(not_(256) == -257);
+    assert(not_(0) == -1);
+    assert(not_(256) == -257);
     assert(neg(42) == -42);
     assert(neg(-256) == 256);
     assert(neg(0x00010000) == 0xFFFF0000);
@@ -58,8 +58,8 @@ int main()
     assert(mod(66306L, 257) == 0);
     assert(mod(66306L, 66300L) == 6);
     assert(mod(66306L, 66306L) == 0);
-    //assert(lsh(20, 18) == 5242880L);
-    //assert(rsh(5267778L, 18) == 20);
+    assert(lsh(20, 18) == 5242880L);
+    assert(rsh(5267778L, 18) == 20);
     assert(and_(0x87654321uL, 0x12345432L) == 0x2244020L);
     assert(or_(0x87654321uL, 0x12345432L) == 0x97755733uL);
     assert(xor_(0x87654321uL, 0x12345432L) == 0x95511713);
