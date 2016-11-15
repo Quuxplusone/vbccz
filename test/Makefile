@@ -8,7 +8,7 @@ MAXES = \$$MAX_ZCODE_SIZE=40000
 ALL_TESTS = arrays.z8 calls.z8 conversions.z8 fptr.z8 \
     int.z8 \
     long.z8 \
-    uint.z8 ulong.z8
+    struct.z8 uint.z8 ulong.z8
 
 all: $(ALL_TESTS)
 
