@@ -1,7 +1,8 @@
 # vbcc needs this environment variable so it can find its config file.
 export VBCC:=../vbcc
 
-VBCCZ = ../vbcc/bin/vc +z -c99 -O1 -I../z-machine/include
+CFLAGS ?= -O3 -comment-ic -comment-misc
+VBCCZ = ../vbcc/bin/vc +z -c99 $(CFLAGS) -I../z-machine/include
 
 all: arrays.z8 calls.z8 conversions.z8 coverage.z8 fptr.z8 ice.z8 ice4.z8 ice5.z8 ice7.z8 int.z8 long.z8 struct.z8 uint.z8 ulong.z8 union.z8
 
