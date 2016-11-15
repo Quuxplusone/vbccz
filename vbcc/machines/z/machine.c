@@ -2694,18 +2694,17 @@ void cleanup_cg(FILE *fp)
 
 int reg_parm(struct reg_handle *rh, struct Typ *typ, int vararg, struct Typ *ft)
 {
-	/* Vararg parameters never go in registers. */
+	int s = sizetab[typ->flags & NQ];
 
+	/* Vararg parameters never go in registers. */
 	if (vararg)
 		return 0;
 
 	/* Will the parameter fit? */
-
-	if (sizetab[typ->flags & NQ] > 2)
+	if (s > sizetab[INT] || s <= 0)
 		return 0;
 
 	/* Still enough registers? */
-
 	if (rh->reg >= NUM_REGPARMS+USERREG)
 		return 0;
 
