@@ -1,25 +1,27 @@
 #include <assert.h>
 #include <stdio.h>
 
-long add(long x, long y) { return x + y; }
-long sub(long x, long y) { return x - y; }
-long mul(long x, long y) { return x * y; }
-long div(long x, long y) { return x / y; }
-long mod(long x, long y) { return x % y; }
-//long lsh(long x, long y) { return x << y; }
-long rsh(long x, long y) { return x >> y; }
-long and_(long x, long y) { return x & y; }
-long or_(long x, long y) { return x | y; }
-long xor_(long x, long y) { return x ^ y; }
-long andand(long x, long y) { return x && y; }
-long oror(long x, long y) { return x || y; }
-long bang(long x) { return !x; }
-long not_(long x) { return ~x; }
-long neg(long x) { return -x; }
-long preinc(long *x) { return ++*x; }
-long postinc(long *x) { return (*x)++; }
-long predec(long *x) { return --*x; }
-long postdec(long *x) { return (*x)--; }
+typedef unsigned long ulong;
+
+ulong add(ulong x, ulong y) { return x + y; }
+ulong sub(ulong x, ulong y) { return x - y; }
+ulong mul(ulong x, ulong y) { return x * y; }
+ulong div(ulong x, ulong y) { return x / y; }
+ulong mod(ulong x, ulong y) { return x % y; }
+//ulong lsh(ulong x, ulong y) { return x << y; }
+ulong rsh(ulong x, ulong y) { return x >> y; }
+ulong and_(ulong x, ulong y) { return x & y; }
+ulong or_(ulong x, ulong y) { return x | y; }
+ulong xor_(ulong x, ulong y) { return x ^ y; }
+ulong andand(ulong x, ulong y) { return x && y; }
+ulong oror(ulong x, ulong y) { return x || y; }
+ulong bang(ulong x) { return !x; }
+ulong not_(ulong x) { return ~x; }
+ulong neg(ulong x) { return -x; }
+ulong preinc(ulong *x) { return ++*x; }
+ulong postinc(ulong *x) { return (*x)++; }
+ulong predec(ulong *x) { return --*x; }
+ulong postdec(ulong *x) { return (*x)--; }
 
 int main()
 {
@@ -64,11 +66,16 @@ int main()
     assert(or_(0x87654321uL, 0x12345432L) == 0x97755733uL);
     assert(xor_(0x87654321uL, 0x12345432L) == 0x95511713);
 
-    long x;
+    ulong x;
     x = 0x0100FFFF; assert(preinc(&x) == 0x01010000); assert(x == 0x01010000);
     x = 0x0100FFFF; assert(postinc(&x) == 0x0100FFFF); assert(x == 0x01010000);
     x = 0x01010000; assert(predec(&x) == 0x0100FFFF); assert(x == 0x0100FFFF);
     x = 0x01010000; assert(postdec(&x) == 0x01010000); assert(x == 0x0100FFFF);
+
+    x = 0xFFFFFFFF; assert(preinc(&x) == 0x00000000); assert(x == 0x00000000);
+    x = 0xFFFFFFFF; assert(postinc(&x) == 0xFFFFFFFF); assert(x == 0x00000000);
+    x = 0x00000000; assert(predec(&x) == 0xFFFFFFFF); assert(x == 0xFFFFFFFF);
+    x = 0x00000000; assert(postdec(&x) == 0x00000000); assert(x == 0xFFFFFFFF);
 
     puts("SUCCESS!");
 }
