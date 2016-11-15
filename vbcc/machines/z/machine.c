@@ -1615,6 +1615,8 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 
     int c,t,lastcomp=0,reg;
 	    
+	if (fp == NULL) return;
+
     	function = func;
 
 	/* r0..r5 are always used for parameter passing. */
