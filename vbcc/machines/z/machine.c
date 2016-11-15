@@ -1968,6 +1968,9 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 				//stackoffset += ic->q2.val.vlong;
 				stackparamadjust += ic->q2.val.vlong;
 
+				if ((typf & NQ) == STRUCT)
+					goto push_copy_struct;
+
 				switch (ic->q2.val.vlong)
 				{
 					case 1:
@@ -1985,6 +1988,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						break;
 
 					default:
+					push_copy_struct:
 						push_addrof(fp, &ic->q1, typf, &q1);
 						fprintf(fp, "\t@copy_table ");
 						emit_zop(fp, &q1);
