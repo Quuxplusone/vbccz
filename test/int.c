@@ -31,6 +31,8 @@ int main()
     assert(mod(20,20) == 0);
     assert(lsh(20,2) == 80);
     assert(rsh(25,2) == 6);
+    assert(lsh(-20,2) == -80);
+    assert(rsh(-25,2) == -7);
     assert(and_(0x8765, 0x1234) == 0x0224);
     assert(or_(0x8765, 0x1234) == 0x9775);
     assert(xor_(0x8765, 0x1234) == 0x9551);
