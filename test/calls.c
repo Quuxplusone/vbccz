@@ -13,12 +13,24 @@ void regular_function(int a, int b, int c)
     assert(c == 3);
 }
 
-void variadic_function(int a, ...)
+void variadic_int(int a, ...)
 {
     va_list ap;
     va_start(ap, a);
     int b = va_arg(ap, int);
     int c = va_arg(ap, int);
+    va_end(ap);
+    assert(a == 1);
+    assert(b == 2);
+    assert(c == 3);
+}
+
+void variadic_long(long a, ...)
+{
+    va_list ap;
+    va_start(ap, a);
+    long b = va_arg(ap, long);
+    long c = va_arg(ap, long);
     va_end(ap);
     assert(a == 1);
     assert(b == 2);
@@ -48,10 +60,19 @@ void test_dangerous_ops(int *a, int n, int k, int *p)
     }
 }
 
+int three = 3;
+long lthree = 3;
+
 int main()
 {
+    int local = 3;
     regular_function(a(), b(2), c());
-    variadic_function(a(), b(2), c());
+    variadic_int(a(), b(2), c());
+    variadic_int(a(), 2, three);
+    variadic_int(local / local, local-1, local);
+    variadic_long((long)a(), (long)b(2), (long)c());
+    variadic_long((long)a(), 2L, lthree);
+    variadic_long((long)(local / local), local - 1L, (long)local);
     vfl8(1,2,3,4,5,6,7,8,9,10L,11);
     {
         int arr[12];
