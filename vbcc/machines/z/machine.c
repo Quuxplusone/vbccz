@@ -1309,7 +1309,7 @@ static void push_value(FILE* fp, struct obj* obj, int typf, struct zop* op)
 
 	if ((flags == (VAR|VARADR)) &&
 	    (obj->v->storage_class == EXTERN) &&
-	    (obj->v->offset == 0))
+	    (obj->val.vlong == 0))
 	{
 		debugemit(fp, "! zop varaddr extern %s\n", obj->v->identifier);
 		op->type = ZOP_EXTERN;
@@ -1319,7 +1319,7 @@ static void push_value(FILE* fp, struct obj* obj, int typf, struct zop* op)
 
 	if ((flags == (VAR|VARADR)) &&
 	    (obj->v->storage_class == STATIC) &&
-	    (obj->v->offset == 0))
+	    (obj->val.vlong == 0))
 	{
 		debugemit(fp, "! zop varaddr static %ld\n", obj->v->offset);
 		op->type = ZOP_STATIC;
