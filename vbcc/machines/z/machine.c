@@ -1776,6 +1776,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						 * noop. */
 					case LONG:
 					case STRUCT:
+					case UNION:
 					case VOID:
 					case ARRAY:
 						break;
@@ -1813,6 +1814,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 
 					case LONG:
 					case STRUCT:
+					case UNION:
 					case VOID:
 					case ARRAY:
 #if 0
@@ -1935,6 +1937,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						break;
 
 					case STRUCT:
+					case UNION:
 					case VOID:
 					case ARRAY:
 					assign_copy_struct:
@@ -1968,7 +1971,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 				//stackoffset += ic->q2.val.vlong;
 				stackparamadjust += ic->q2.val.vlong;
 
-				if ((typf & NQ) == STRUCT)
+				if ((typf & NQ) == STRUCT || (typf & NQ) == UNION)
 					goto push_copy_struct;
 
 				switch (ic->q2.val.vlong)
