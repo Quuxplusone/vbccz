@@ -191,6 +191,11 @@ Array __long_temp3 -> 4;
 	z-->1 = b;
 ];
 
+[ __long_not q1 z;
+	z-->0 = ~(q1-->0);
+	z-->1 = ~(q1-->1);
+];
+
 [ __long_xor q1 q2 z  a b;
 	a = q1-->0;
 	b = q2-->0;

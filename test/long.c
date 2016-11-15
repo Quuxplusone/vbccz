@@ -43,8 +43,8 @@ int main()
     assert(oror(0,0) == 0);
     assert(bang(0) == 1);
     assert(bang(256) == 0);
-    //assert(not_(0) == -1);
-    //assert(not_(256) == -257);
+    assert(not_(0) == -1);
+    assert(not_(256) == -257);
     assert(neg(42) == -42);
     assert(neg(-256) == 256);
     assert(neg(0x00010000) == 0xFFFF0000);

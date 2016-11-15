@@ -1862,18 +1862,38 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 				continue;
 
 			case KOMPLEMENT: /* Unary komplement */
-				/* INFORM BUG! */
-				/* The @not opcode doesn't work. We have to use a
-				 * wrapper function instead. */
-				
-				push_value(fp, &ic->q1, typf, &q1);
-				pop_value(fp, &ic->z, typf, &z);
-				fprintf(fp, "\t@call_2s __not ");
-				emit_zop(fp, &q1);
-				fprintf(fp, " -> ");
-				emit_zop(fp, &z);
-				fprintf(fp, ";\n");
-				fin_zop(fp, &ic->z, typf, &z);
+				switch (typf & NQ)
+				{
+					case CHAR:
+					case SHORT:
+					case INT:
+						/* INFORM BUG! */
+						/* The @not opcode doesn't work. We have to use a
+						 * wrapper function instead. */
+
+						push_value(fp, &ic->q1, typf, &q1);
+						pop_value(fp, &ic->z, typf, &z);
+						fprintf(fp, "\t@call_2s __not ");
+						emit_zop(fp, &q1);
+						fprintf(fp, " -> ");
+						emit_zop(fp, &z);
+						fprintf(fp, ";\n");
+						fin_zop(fp, &ic->z, typf, &z);
+						break;
+
+					case LONG:
+						push_addrof(fp, &ic->z, typf, &z);
+						push_addrof(fp, &ic->q1, typf, &q1);
+						fprintf(fp, "\t@call_vn __long_not ");
+						emit_zop(fp, &q1);
+						fprintf(fp, " ");
+						emit_zop(fp, &z);
+						fprintf(fp, ";\n");
+						break;
+
+					default:
+						ierror(0);
+				}
 				continue;
 
 			case MOVEFROMREG: /* Write a register to memory */
