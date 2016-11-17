@@ -2362,6 +2362,16 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						fin_zop(fp, &ic->z, typf, &z);
 						break;
 					
+					case LONG:
+						push_addrof(fp, &ic->q1, LONG, &q1);
+						push_addrof(fp, &ic->z, typf, &z);
+						fprintf(fp, "\t@call_vn __long_copy ");
+						emit_zop(fp, &q1);
+						fprintf(fp, " ");
+						emit_zop(fp, &z);
+						fprintf(fp, ";\n");
+						break;
+
 					default:
 						ierror(typf & NQ);
 				}

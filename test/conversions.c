@@ -31,6 +31,9 @@ unsigned long si_ul(signed int c) { return c; }
 long ui_sl(unsigned int c) { return c; }
 unsigned long ui_ul(unsigned int c) { return c; }
 
+unsigned long gul;
+void inc_ll_ul(long c) { gul = (unsigned long)(c + 1); }
+
 int main()
 {
     assert(sc_ss(42) == 42);
@@ -82,6 +85,8 @@ int main()
     assert(si_ul(-42) == 0uL - 42uL);
     assert(ui_sl(-42) == 65536L - 42L);
     assert(ui_ul(-42) == 65536uL - 42uL);
+
+    inc_ll_ul(42); assert(gul == 43);
 
     puts("SUCCESS!");
 }
