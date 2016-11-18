@@ -103,6 +103,12 @@ Array __long_temp3 -> 4;
 	z-->1 = lo;
 ];
 
+[ __long_fromchar z q1; ! z = (long)(char)q1, with sign extension
+	@log_shift q1 (8) -> q1;
+	@art_shift q1 (-8) -> q1;
+	@call_vn __long_fromint z q1;
+];
+
 [ __long_fromint z q1; ! z = (long)q1, with sign extension
 	z-->1 = q1;
 	if (q1 < 0)
