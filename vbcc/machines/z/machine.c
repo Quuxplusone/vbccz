@@ -2173,12 +2173,9 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 
 		case CONVERT:
 		  if((q1typ(ic)&NU)==CHAR){
-				switch (ztyp(ic) & NU)
+				switch (ztyp(ic) & NQ)
 				{
 					case CHAR:
-					case UNSIGNED|CHAR:
-					case UNSIGNED|SHORT:
-					case UNSIGNED|INT:
 					case SHORT:
 					case INT:
 						push_value(fp, &ic->q1, CHAR, &q1);
@@ -2193,7 +2190,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						break;
 					
 					case LONG:
-						push_value(fp, &ic->q1, INT, &q1);
+						push_value(fp, &ic->q1, CHAR, &q1);
 						push_addrof(fp, &ic->z, typf, &z);
 						fprintf(fp, "\t@call_vn __long_fromchar ");
 						emit_zop(fp, &z);
