@@ -2089,7 +2089,13 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						/* Destination parameter first! */
 
 						push_addrof(fp, &ic->z, typf, &z);
-						push_addrof(fp, &ic->q2, typf, &q2);
+						if (code == LSHIFT || code == RSHIFT) {
+							if ((q2typ(ic) & NQ) != INT) ierror(0);
+							push_value(fp, &ic->q2, INT, &q2);
+						} else {
+							if ((q2typ(ic) & NQ) != LONG) ierror(0);
+							push_addrof(fp, &ic->q2, typf, &q2);
+						}
 						push_addrof(fp, &ic->q1, typf, &q1);
 
 						fprintf(fp, "\t@call_vn __long_");

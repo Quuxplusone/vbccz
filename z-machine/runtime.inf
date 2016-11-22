@@ -127,67 +127,70 @@ Array __long_temp3 -> 4;
 	z-->1 = q1-->1 | q2-->1;
 ];
 
-[ __long_asr q1 q2 z  s t;
-	if ((q2-->0 ~= 0) || (((q2-->1)-32768) > -32737))
-	{
-		! All bits shifted off; so we just propagate the sign.
-
-		if (q2-->0 & $8000)
-		{
-			z-->0 = -1;
-			z-->1 = -1;
-		}
-		else
-		{
-			z-->0 = 0;
-			z-->1 = 0;
-		}
-
-		return;
+[ __long_lsl q1 q2 z  hi lo temp; ! z = *(long*)q1 << (int)q2
+	hi = q1-->0;
+	lo = q1-->1;
+	q2 = q2 & 31;
+	if (q2 >= 16) {
+		hi = lo;
+		lo = 0;
+		q2 = q2 - 16;
 	}
-	
-	q2 = -(q2-->1 & $1F);
-	s = 16 + q2;
-
-	t = q1-->1;
-	@log_shift t q2 -> t;
-	z-->1 = t;
-
-	t = q1-->0;
-	@log_shift t s -> t;
-	z-->1 = z-->1 | t;
-
-	t = q1-->0;
-	@art_shift t q2 -> t;
-	z-->0 = t;
-];
-	
-[ __long_lsr q1 q2 z  s t;
-	if ((q2-->0 ~= 0) || ((q2-->1-32768) > -32737))
-	{
-		! All bits shifted off; the result is zero.
-
-		z-->0 = 0;
-		z-->1 = 0;
-		return;
+	if (q2 ~= 0) {
+		@log_shift hi q2 -> hi;
+		temp = q2 - 16;
+		@log_shift lo temp -> temp;
+		hi = hi | temp;
+		@log_shift lo q2 -> lo;
 	}
-	
-	q2 = -(q2-->1 & $1F);
-	s = 16 + q2;
-
-	t = q1-->1;
-	@log_shift t q2 -> t;
-	z-->1 = t;
-
-	t = q1-->0;
-	@log_shift t s -> t;
-	z-->1 = z-->1 | t;
-
-	t = q1-->0;
-	@log_shift t q2 -> t;
-	z-->0 = t;
+	z-->0 = hi;
+	z-->1 = lo;
 ];
-	
+
+[ __long_asr q1 q2 z  hi lo temp; ! z = *(long*)q1 >> (int)q2
+	hi = q1-->0;
+	lo = q1-->1;
+	q2 = q2 & 31;
+	if (q2 >= 16) {
+		lo = hi;
+		@art_shift hi (-15) -> hi;
+		q2 = q2 - 16;
+	}
+	if (q2 ~= 0) {
+		temp = -q2;
+		@log_shift lo temp -> lo;
+		temp = 16 - q2;
+		@log_shift hi temp -> temp;
+		lo = lo | temp;
+		temp = -q2;
+		@art_shift hi temp -> hi;
+	}
+	z-->0 = hi;
+	z-->1 = lo;
+];
+
+[ __long_lsr q1 q2 z  hi lo temp; ! z = *(unsigned long*)q1 >> (int)q2
+	hi = q1-->0;
+	lo = q1-->1;
+	q2 = q2 & 31;
+	if (q2 >= 16) {
+		lo = hi;
+		hi = 0;
+		q2 = q2 - 16;
+	}
+	if (q2 ~= 0) {
+		temp = -q2;
+		@log_shift lo temp -> lo;
+		temp = 16 - q2;
+		@log_shift hi temp -> temp;
+		lo = lo | temp;
+		temp = -q2;
+		@log_shift hi temp -> hi;
+	}
+	z-->0 = hi;
+	z-->1 = lo;
+];
+
 [ __long_neg q1 z  a b;
 	a = ~(q1-->0);
 	b = ~(q1-->1) + 1;
