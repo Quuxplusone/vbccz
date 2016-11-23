@@ -13,6 +13,18 @@ void regular_function(int a, int b, int c)
     assert(c == 3);
 }
 
+void rf4(int a, int b, int c, int d) { assert(a==1 && b==2 && c==3 && d==4); }
+void rf5(int a, int b, int c, int d, int e) { assert(a==1 && b==2 && c==3 && d==4 && e==5); }
+void rf6(int a, int b, int c, int d, int e, int f) { assert(a==1 && b==2 && c==3 && d==4 && e==5 && f==6); }
+void rf7(int a, int b, int c, int d, int e, int f, int g) { assert(a==1 && b==2 && c==3 && d==4 && e==5 && f==6 && g==7); }
+void rf8(int a, int b, int c, int d, int e, int f, int g, int h) { assert(a==1 && b==2 && c==3 && d==4 && e==5 && f==6 && g==7 && h==8); }
+
+void rfl4(int a, int b, int c, long d) { assert(a==1 && b==2 && c==3 && d==4); }
+void rfl5(int a, int b, int c, long d, int e) { assert(a==1 && b==2 && c==3 && d==4 && e==5); }
+void rfl6(int a, int b, int c, long d, int e, int f) { assert(a==1 && b==2 && c==3 && d==4 && e==5 && f==6); }
+void rfl7(int a, int b, int c, long d, int e, int f, int g) { assert(a==1 && b==2 && c==3 && d==4 && e==5 && f==6 && g==7); }
+void rfl8(int a, int b, int c, long d, int e, int f, int g, int h) { assert(a==1 && b==2 && c==3 && d==4 && e==5 && f==6 && g==7 && h==8); }
+
 void variadic_int(int a, ...)
 {
     va_list ap;
@@ -73,6 +85,16 @@ int main()
     variadic_long((long)a(), (long)b(2), (long)c());
     variadic_long((long)a(), 2L, lthree);
     variadic_long((long)(local / local), local - 1L, (long)local);
+    rf4(1,2,3,4);
+    rf5(1,2,3,4,5);
+    rf6(1,2,3,4,5,6);
+    rf7(1,2,3,4,5,6,7);
+    rf8(1,2,3,4,5,6,7,8);
+    rfl4(1,2,3,4);
+    rfl5(1,2,3,4,5);
+    rfl6(1,2,3,4,5,6);
+    rfl7(1,2,3,4,5,6,7);
+    rfl8(1,2,3,4,5,6,7,8);
     vfl8(1,2,3,4,5,6,7,8,9,10L,11);
     {
         int arr[12];

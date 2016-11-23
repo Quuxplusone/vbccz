@@ -23,6 +23,15 @@ uint postinc(uint *x) { return (*x)++; }
 uint predec(uint *x) { return --*x; }
 uint postdec(uint *x) { return (*x)--; }
 
+void test_initialization(uint x, uint y)
+{
+    static uint x2 = 0x80;
+    static uint y2 = 0x8000;
+    assert(x == x2); assert(x2 > 0);
+    assert(y == y2); assert(y2 > 0);
+    ++x2; ++y2;
+}
+
 int main()
 {
     assert(add(5,4) == 9);
@@ -60,6 +69,8 @@ int main()
     x = 0xFFFF; assert(postinc(&x) == -1); assert(x == 0x0000);
     x = 0x0000; assert(predec(&x) == -1); assert(x == 0xFFFF);
     x = 0x0000; assert(postdec(&x) == 0); assert(x == 0xFFFF);
+
+    test_initialization(0x80, 0x8000);
 
     puts("SUCCESS!");
 }
