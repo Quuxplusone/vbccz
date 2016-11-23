@@ -23,6 +23,17 @@ ulong postinc(ulong *x) { return (*x)++; }
 ulong predec(ulong *x) { return --*x; }
 ulong postdec(ulong *x) { return (*x)--; }
 
+void test_initialization(ulong x, ulong y, ulong z)
+{
+    static ulong x2 = 0x80;
+    static ulong y2 = 0x8000;
+    static ulong z2 = 0x80000000;
+    assert(x == x2); assert(x2 > 0);
+    assert(y == y2); assert(y2 > 0);
+    assert(z == z2); assert(z2 > 0);
+    ++x2; ++y2; ++z2;
+}
+
 int main()
 {
     assert(add(5,4) == 9);
@@ -76,6 +87,8 @@ int main()
     x = 0xFFFFFFFF; assert(postinc(&x) == 0xFFFFFFFF); assert(x == 0x00000000);
     x = 0x00000000; assert(predec(&x) == 0xFFFFFFFF); assert(x == 0xFFFFFFFF);
     x = 0x00000000; assert(postdec(&x) == 0x00000000); assert(x == 0xFFFFFFFF);
+
+    test_initialization(0x80, 0x8000, 0x80000000);
 
     puts("SUCCESS!");
 }
