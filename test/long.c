@@ -21,6 +21,17 @@ long postinc(long *x) { return (*x)++; }
 long predec(long *x) { return --*x; }
 long postdec(long *x) { return (*x)--; }
 
+void test_initialization(long x, long y, long z)
+{
+    static long x2 = 0x80;
+    static long y2 = 0x8000;
+    static long z2 = 0x80000000;
+    assert(x == x2); assert(x2 > 0);
+    assert(y == y2); assert(y2 > 0);
+    assert(z == z2); assert(z2 < 0);
+    ++x2; ++y2; ++z2;
+}
+
 int main()
 {
     assert(add(5,4) == 9);
@@ -69,6 +80,8 @@ int main()
     x = 0x0100FFFF; assert(postinc(&x) == 0x0100FFFF); assert(x == 0x01010000);
     x = 0x01010000; assert(predec(&x) == 0x0100FFFF); assert(x == 0x0100FFFF);
     x = 0x01010000; assert(postdec(&x) == 0x01010000); assert(x == 0x0100FFFF);
+
+    test_initialization(0x80, 0x8000, 0x80000000);
 
     puts("SUCCESS!");
 }
