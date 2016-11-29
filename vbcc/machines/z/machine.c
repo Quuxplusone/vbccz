@@ -357,19 +357,32 @@ static zshort xword(zmax val, int word)
 
 static void dump_type(FILE* fp, int typf)
 {
-	switch (typf)
+	if (typf & CONST) fprintf(fp, "CONST|");
+	if (typf & VOLATILE) fprintf(fp, "VOLATILE|");
+	if (typf & UNSIGNED) fprintf(fp, "UNSIGNED|");
+	if (typf & BOOLEAN) fprintf(fp, "BOOLEAN|");
+	if (typf & SIGNED_CHARACTER) fprintf(fp, "SIGNED|");
+	switch (typf & NQ)
 	{
-		case VOID:	fprintf(fp, "VOID"); break;
 		case CHAR:	fprintf(fp, "CHAR"); break;
 		case SHORT:	fprintf(fp, "SHORT"); break;
 		case INT:	fprintf(fp, "INT"); break;
 		case LONG:	fprintf(fp, "LONG"); break;
+		case LLONG:	fprintf(fp, "LLONG"); break;
+		case FLOAT:	fprintf(fp, "FLOAT"); break;
+		case DOUBLE:	fprintf(fp, "DOUBLE"); break;
+		case LDOUBLE:	fprintf(fp, "LDOUBLE"); break;
+		case VOID:	fprintf(fp, "VOID"); break;
 		case POINTER:	fprintf(fp, "POINTER"); break;
-		case STRUCT:	fprintf(fp, "STRUCT"); break;
 		case ARRAY:	fprintf(fp, "ARRAY"); break;
+		case STRUCT:	fprintf(fp, "STRUCT"); break;
 		case UNION:	fprintf(fp, "UNION"); break;
+		case ENUM:	fprintf(fp, "ENUM"); break;
 		case FUNKT:	fprintf(fp, "FUNKT"); break;
 		default:	fprintf(fp, "unknown %X", typf);
+	}
+	if (typf & ~(NQ|CONST|VOLATILE|UNSIGNED|BOOLEAN|SIGNED_CHARACTER)) {
+		fprintf(fp, "|0x%x", (unsigned)(typf & ~(NQ|CONST|VOLATILE|UNSIGNED|BOOLEAN|SIGNED_CHARACTER)));
 	}
 }
 
@@ -416,7 +429,7 @@ static void dump_obj(FILE* fp, struct obj* obj, int typf)
 				break;
 
 			case UNSIGNED|INT:
-				fprintf(fp, "[uint #%d]", obj->val.vuint);
+				fprintf(fp, "[uint #%u]", obj->val.vuint);
 				break;
 
 			case LONG:
@@ -434,11 +447,10 @@ static void dump_obj(FILE* fp, struct obj* obj, int typf)
 			case DOUBLE:
 				fprintf(fp, "[double #%f]", obj->val.vdouble);
 				break;
-#if 0
+
 			case POINTER:
-				fprintf(fp, "[pointer #%04X]", obj->val.vpointer);
+				fprintf(fp, "[pointer #%04X]", obj->val.vuint);
 				break;
-#endif
 		}
 	}
 	if (f & VAR)
@@ -500,19 +512,7 @@ static void dump_ic(FILE* fp, struct IC* ic)
 		case MINUS:		p = "MINUS";		break;
 		case ADDRESS:		p = "ADDRESS";		break;
 		case CALL:		p = "CALL";		break;
-#if 0
-		case CONVCHAR:		p = "CONVCHAR";		break;
-		case CONVSHORT:		p = "CONVSHORT";	break;
-		case CONVINT:		p = "CONVINT";		break;
-		case CONVLONG:		p = "CONVLONG";		break;
-		case CONVFLOAT:		p = "CONVFLOAT";	break;
-		case CONVDOUBLE:	p = "CONVDOUBLE";	break;
-		case CONVPOINTER:	p = "CONVPOINTER";	break;
-		case CONVUCHAR:		p = "CONVUCHAR";	break;
-		case CONVUSHORT:	p = "CONVUSHORT";	break;
-		case CONVUINT:		p = "CONVUINT";		break;
-		case CONVULONG:		p = "CONVULONG";	break;
-#endif
+		case CONVERT:		p = "CONVERT";		break;
 		case ALLOCREG:		p = "ALLOCREG";		break;
 		case FREEREG:		p = "FREEREG";		break;
 		case COMPARE:		p = "COMPARE";		break;
@@ -555,11 +555,11 @@ static void dump_ic(FILE* fp, struct IC* ic)
 			goto epilogue;
 	}
 	
-	dump_obj(fp, &ic->q1, ic->typf);
+	dump_obj(fp, &ic->q1, q1typ(ic));
 	fprintf(fp, " ");
-	dump_obj(fp, &ic->q2, ic->typf);
+	dump_obj(fp, &ic->q2, q2typ(ic));
 	fprintf(fp, " -> ");
-	dump_obj(fp, &ic->z, ic->typf);
+	dump_obj(fp, &ic->z, ztyp(ic));
 
 epilogue:
 	if (g_flags[2] & USEDFLAG)
