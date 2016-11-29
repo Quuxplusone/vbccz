@@ -1361,7 +1361,7 @@ int find_best_local_reg(IC *fp,Var *v,int preferred)
     }
 
     /* check for register arguments */
-    if((p->z.flags&(VAR|DREFOBJ))==VAR&&!*p->z.v->identifier&&p->z.v->reg){
+    if(p!=fp&&(p->z.flags&(VAR|DREFOBJ))==VAR&&!*p->z.v->identifier&&p->z.v->reg){
       if(p->code==ASSIGN&&(p->q1.flags&(VAR|DREFOBJ))==VAR&&p->q1.v==v){
 	savings[abs(p->z.v->reg)]++;
       }else{
