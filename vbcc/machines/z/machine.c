@@ -406,7 +406,7 @@ static void dump_obj(FILE* fp, struct obj* obj, int typf)
 	if (f & VARADR)
 		fprintf(fp, "&");
 
-	if (f == KONST)
+	if (f & KONST)
 	{
 		switch (typf & NU)
 		{
@@ -455,12 +455,7 @@ static void dump_obj(FILE* fp, struct obj* obj, int typf)
 				break;
 		}
 	}
-	else if (f == REG)
-		fprintf(fp, "[reg %s]", regnames[obj->reg]);
-	else if (f == (REG|DREFOBJ))
-		fprintf(fp, "[deref reg %s]", regnames[obj->reg]);
-	//else if (f & VAR)
-	else
+	if (f & VAR)
 	{
 		fprintf(fp, "[var ");
 		dump_type(fp, typf);
@@ -480,6 +475,8 @@ static void dump_obj(FILE* fp, struct obj* obj, int typf)
 		if (f & REG)
 			fprintf(fp, " in %s", regnames[obj->reg]);
 		fprintf(fp, "]");
+	} else if (f & REG) {
+		fprintf(fp, "[reg %s]", regnames[obj->reg]);
 	}
 }
 
@@ -649,17 +646,17 @@ int dangerous_IC(struct IC *ic)
 	if ((ic->q1.flags & DREFOBJ) ||
 	    (ic->q2.flags & DREFOBJ) ||
 	    (ic->z.flags & DREFOBJ))
-		return 0;
+		return 1;
 
 	/* Division or modulo? */
 
 	if ((ic->code == DIV) ||
 	    (ic->code == MOD))
-		return 0;
+		return 1;
 
 	/* Safe, as far as we can tell. */
 
-	return 1;
+	return 0;
 }
 
 /* Returns zero if the code for converting type p->ntyp to type typ is a noop.
