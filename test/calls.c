@@ -25,6 +25,17 @@ void variadic_function(int a, ...)
     assert(c == 3);
 }
 
+void vfl8(int a, int b, int c, long d, int e, int f, int g, int h, ...)
+{
+    va_list ap;
+    va_start(ap, h);
+    long i = va_arg(ap, int);
+    long j = va_arg(ap, long);
+    long k = va_arg(ap, int);
+    assert(a==1 && b==2 && c==3 && d==4 && e==5 && f==6 && g==7 && h==8);
+    assert(i==9 && j==10 && k==11);
+}
+
 void test_dangerous_ops(int *a, int n, int k, int *p)
 {
     for (int i=0; i < n; ++i) {
@@ -41,6 +52,7 @@ int main()
 {
     regular_function(a(), b(2), c());
     variadic_function(a(), b(2), c());
+    vfl8(1,2,3,4,5,6,7,8,9,10L,11);
     {
         int arr[12];
         test_dangerous_ops(arr, 2, 0, NULL);
