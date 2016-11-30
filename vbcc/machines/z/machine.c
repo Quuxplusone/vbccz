@@ -870,11 +870,6 @@ static int find_varargs(void)
 		if (((*sd->sl)[i].styp->flags & NQ) == VOID)
 			ierror(0);
 
-		/* Does the backend want to assign it to a register? */
-
-		if (reg_parm(&rh, (*sd->sl)[i].styp, 0, 0))
-			continue;
-
 		/* Add on the size of this parameter. */
 
 		offset += sizetab[(*sd->sl)[i].styp->flags & NQ];
