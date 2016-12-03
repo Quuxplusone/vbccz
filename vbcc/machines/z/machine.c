@@ -180,7 +180,7 @@ int regsa[] = {
 
 int regscratch[] = {
 	0,
-	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	1,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0};
 
 /* Default state for register parameter passing. */
