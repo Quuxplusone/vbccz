@@ -11,6 +11,11 @@ void (*gpfv)() = fv;
 int (*gpfi)() = fi;
 int (*gpfii)() = fii;
 
+int (*test_fptr_as_return())(int)
+{
+    return fii;
+}
+
 void f1() { g = 11; }
 void f2() { g = 12; }
 void f3() { g = 13; }
@@ -37,6 +42,9 @@ int main()
     assert(gpfi() == 42);
     assert(pfii(43) == 44);
     assert(gpfii(43) == 44);
+
+    assert(test_fptr_as_return() == fii);
+    assert(test_fptr_as_return()(42) == 43);
 
     test_fptr_tables(0);
 
