@@ -992,6 +992,10 @@ struct Typ *declaration_specifiers(void)
   if(type_qualifiers&(XSIGNED|UNSIGNED))
     if(!ISINT(typ))
       error(58);
+  if ((type_qualifiers & XSIGNED) && (typ == CHAR)) {
+    type_qualifiers |= SIGNED_CHARACTER;
+  }
+  type_qualifiers &= ~XSIGNED;
   new->flags=typ|type_qualifiers;
   new->attr=attr;
   return new;
