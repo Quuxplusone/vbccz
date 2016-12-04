@@ -1618,6 +1618,13 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 	regused[6] = 1;
 	regused[7] = 1;
 
+	/* The indep code seems to underestimate the size of the frame for
+	 * some reason. For example, long f(long x) { return x; } requires
+	 * a temporary variable at xp(2), but stackframe remains 0.
+	 * I don't understand this bug yet. Anyway, +2 to compensate. */
+
+	stackframe += maxalign;
+
 	/* This is the offset of the stack frame, relative to the current stack
 	 * pointer. */
 
