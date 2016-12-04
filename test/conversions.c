@@ -82,10 +82,10 @@ int main()
     assert(sl_ui(0x12345678L) == 0x5678u);
     assert(ul_si(0x12345678uL) == 0x5678);
     assert(ul_ui(0x12345678uL) == 0x5678u);
-    //assert(sl_sl(0x12345678L) == 0x12345678L);
-    //assert(sl_ul(0x12345678L) == 0x12345678uL);
-    //assert(ul_sl(0x12345678uL) == 0x12345678L);
-    //assert(ul_ul(0x12345678uL) == 0x12345678uL);
+    assert(sl_sl(0x12345678L) == 0x12345678L);
+    assert(sl_ul(0x12345678L) == 0x12345678uL);
+    assert(ul_sl(0x12345678uL) == 0x12345678L);
+    assert(ul_ul(0x12345678uL) == 0x12345678uL);
 
     assert(sc_sc(-42) == -42);
     assert(sc_uc(-42) == 256 - 42);
@@ -150,10 +150,10 @@ int main()
     assert(sl_ui(0x1234A678L) == 0xA678L);
     assert(ul_si(0x1234A678uL) == 0xFFFFA678L);
     assert(ul_ui(0x1234A678uL) == 0xA678L);
-    //assert(sl_sl(0xA2345678L) == 0xA2345678L);
-    //assert(sl_ul(0xA2345678L) == 0xA2345678uL);
-    //assert(ul_sl(0xA2345678uL) == 0xA2345678L);
-    //assert(ul_ul(0xA2345678uL) == 0xA2345678uL);
+    assert(sl_sl(0xA2345678L) == 0xA2345678L);
+    assert(sl_ul(0xA2345678L) == 0xA2345678uL);
+    assert(ul_sl(0xA2345678uL) == 0xA2345678L);
+    assert(ul_ul(0xA2345678uL) == 0xA2345678uL);
 
     inc_ll_ul(42); assert(gul == 43);
 
