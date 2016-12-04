@@ -855,8 +855,8 @@ static int find_varargs(void)
 	int offset = 0;
 	struct reg_handle rh = empty_reg_handle;
 	struct struct_declaration* sd = function->vtyp->exact;
-	int stackalign;
 	int i;
+	struct Typ *parameter_type;
 
 	for (i=0; i<sd->count; i++)
 	{
@@ -872,14 +872,10 @@ static int find_varargs(void)
 
 		/* Add on the size of this parameter. */
 
-		offset += sizetab[(*sd->sl)[i].styp->flags & NQ];
-
-		/* Stack align. */
-
-		stackalign = align[(*sd->sl)[i].styp->flags & NQ];
-		offset = ((offset+1) / stackalign) * stackalign;
+		parameter_type = (*sd->sl)[i].styp;
+		offset = (offset + align[parameter_type->flags&NQ]-1) & ~(align[parameter_type->flags&NQ]-1);
+		offset += szof(parameter_type);
 	}
-
 	return (offset + stackoffset);
 }
 
