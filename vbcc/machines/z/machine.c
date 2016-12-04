@@ -2206,19 +2206,13 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case CHAR:
 					case SHORT:
 					case INT:
-						push_value(fp, &ic->q1, UNSIGNED|CHAR, &q1);
+						push_value(fp, &ic->q1, CHAR, &q1);
 						pop_value(fp, &ic->z, typf, &z);
-						if ((z.type != ZOP_STACK) || (q1.type != ZOP_STACK))
-						{
-							emit_add(fp, &q1, &zop_zero, &z);
-#if 0
-							fprintf(fp, "\t@add ");
-							emit_zop(fp, &q1);
-							fprintf(fp, " 0 -> ");
-							emit_zop(fp, &z);
-							fprintf(fp, ";\n");
-#endif
-						}
+						fprintf(fp, "\t@and ");
+						emit_zop(fp, &q1);
+						fprintf(fp, " 255 -> ");
+						emit_zop(fp, &z);
+						fprintf(fp, ";\n");
 						fin_zop(fp, &ic->z, typf, &z);
 						break;
 					
