@@ -37,9 +37,9 @@ int main()
     assert(uc_ul(42) == 42uL);
 
     assert(ss_sc(42) == 42);
-    //assert(ss_uc(554) == 42);
+    assert(ss_uc(554) == 42);
     assert(us_sc(42) == 42);
-    //assert(us_uc(554) == 42);
+    assert(us_uc(554) == 42);
     assert(ss_ss(42) == 42);
     assert(ss_us(42) == 42);
     assert(us_ss(42) == 42);
@@ -54,9 +54,9 @@ int main()
     assert(us_ul(42) == 42uL);
 
     assert(si_sc(42) == 42);
-    //assert(si_uc(554) == 42);
+    assert(si_uc(554) == 42);
     assert(ui_sc(42) == 42);
-    //assert(ui_uc(554) == 42);
+    assert(ui_uc(554) == 42);
     assert(si_ss(42) == 42);
     assert(si_us(42) == 42);
     assert(ui_ss(42) == 42);
@@ -88,9 +88,9 @@ int main()
     //assert(ul_ul(0x12345678uL) == 0x12345678uL);
 
     assert(sc_sc(-42) == -42);
-    //assert(sc_uc(-42) == 256 - 42);
+    assert(sc_uc(-42) == 256 - 42);
     assert(uc_sc(-42) == -42);
-    //assert(uc_uc(-42) == 256 - 42);
+    assert(uc_uc(-42) == 256 - 42);
     assert(sc_ss(-42) == -42);
     assert(sc_us(-42) == 0u - 42u);
     assert(uc_ss(-42) == 256 - 42);
@@ -105,9 +105,9 @@ int main()
     assert(uc_ul(-42) == 256 - 42);
 
     assert(ss_sc(-554) == -42);
-    //assert(ss_uc(-554) == 256 - 42);
+    assert(ss_uc(-554) == 256 - 42);
     assert(us_sc(-554) == -42);
-    //assert(us_uc(-554) == 256 - 42);
+    assert(us_uc(-554) == 256 - 42);
     assert(ss_ss(-554) == -554);
     assert(ss_us(-554) == 64982);
     assert(us_ss(-554) == -554);
@@ -122,9 +122,9 @@ int main()
     assert(us_ul(-42) == 65536uL - 42uL);
 
     assert(si_sc(0x12A4) == 0xFFA4);
-    //assert(si_uc(0x12A4) == 0xA4);
+    assert(si_uc(0x12A4) == 0xA4);
     assert(ui_sc(0x12A4) == 0xFFA4);
-    //assert(ui_uc(0x12A4) == 0xA4);
+    assert(ui_uc(0x12A4) == 0xA4);
     assert(si_ss(-42) == -42);
     assert(si_us(-554) == 64982);
     assert(ui_ss(-42) == -42);
