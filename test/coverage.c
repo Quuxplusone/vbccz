@@ -36,12 +36,32 @@ void get_ul(ul val, int radix)
     }
 }
 
+void cover_typed_constants()
+{
+    signed char sc = 0;
+    char c = 0;
+    unsigned char uc = 0;
+    short ss = 0;
+    unsigned short us = 0;
+    int si = 0;
+    unsigned int ui = 0;
+    long sl = 0;
+    unsigned long ul = 0;
+    int *ip = 0;
+    void *vp = (void*)123;
+    assert(vp == (void*)123);
+    assert((int)vp == 123);
+    assert((long)vp == 123L);
+}
+
 int main()
 {
     copy_sl_sl(0x12345678L);
     copy_sl_ul(0x12345678L);
     copy_ul_sl(0x12345678uL);
     copy_ul_ul(0x12345678uL);
+
+    cover_typed_constants();
 
     puts("SUCCESS!");
 }
