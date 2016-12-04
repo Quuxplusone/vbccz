@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 
 typedef struct A {
@@ -14,6 +15,18 @@ typedef struct B {
 
 A adda(A x, A y) { A result = x; result.a += y.a; result.b += y.b; return result; }
 B addb(B x, B y) { B result = x; result.a += y.a; result.b += y.b; return result; }
+
+int vara(A a, ...) {
+    va_list ap; va_start(ap, x);
+    int i = va_arg(ap, int); va_end(ap);
+    return a.a + a.b + i;
+}
+
+int varb(B b, ...) {
+    va_list ap; va_start(ap, b);
+    int i = va_arg(ap, int); va_end(ap);
+    return b.a + b.b + b.c + i;
+}
 
 void test_small_struct()
 {
@@ -71,10 +84,19 @@ void test_large_struct()
     assert(p == sp && p == &sa && p != &a);
 }
 
+void test_variadics()
+{
+    A a = {1,2};
+    B b = {1,2,3};
+    assert(vara(a, 42) == 45);
+    assert(varb(b, 42) == 48);
+}
+
 int main()
 {
     test_small_struct();
     test_large_struct();
+    test_variadics();
 
     puts("SUCCESS!");
 }
