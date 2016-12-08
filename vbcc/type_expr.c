@@ -2131,7 +2131,7 @@ int alg_opt(np p,type *ttyp)
             return type_expression2(p,ttyp);
         }
         /*  a*0=0   */
-        if(null2&&(f==MULT||f==PMULT||f==AND||f==DIV||f==MOD)){
+        if(null2&&(f==MULT||f==PMULT||f==AND||f==DIV||f==MOD)&&!p->sidefx){
             if(DEBUG&1) printf("a*&/%%0->0\n");
             if(null2&&(f==DIV||f==MOD)) error(84);
             if(p->flags==PMULT) p->flags=PCEXPR; else p->flags=CEXPR;
@@ -2139,8 +2139,8 @@ int alg_opt(np p,type *ttyp)
 	    eval_const(&gval,INT);
             /*  hier nur int,long,float,double moeglich, hoffe ich  */
             insert_constn(p);
-            if(!p->left->sidefx){free_expression(p->left);p->left=0;} else make_cexpr(p->left);
-            if(!p->right->sidefx){free_expression(p->right);p->right=0;} else make_cexpr(p->right);
+            free_expression(p->left);p->left=0;
+            free_expression(p->right);p->right=0;
 /*            return(type_expression2(p,ttyp));   */
             return 1;
         }
@@ -2182,32 +2182,19 @@ int alg_opt(np p,type *ttyp)
             return type_expression2(p,ttyp);
         }
         /*  0/a=0   */
-        if(null1&&(f==DIV||f==MOD||f==LSHIFT||f==RSHIFT)){
+        if(null1&&(f==DIV||f==MOD||f==LSHIFT||f==RSHIFT)&&!p->sidefx){
             if(DEBUG&1) printf("0/%%<<>>a->0\n");
             p->flags=CEXPR;
 	    gval.vint=zm2zi(l2zm(0L));
 	    eval_const(&gval,INT);
             insert_constn(p);
-            if(!p->left->sidefx){free_expression(p->left);p->left=0;}else make_cexpr(p->left);
-            if(!p->right->sidefx){free_expression(p->right);p->right=0;} else make_cexpr(p->right);
+            free_expression(p->left);p->left=0;
+            free_expression(p->right);p->right=0;
 	    dontopt=0;
             return type_expression2(p,ttyp);
         }
     }
     return 1;
-}
-void make_cexpr(np p)
-/*  Macht aus einem Knoten, der durch constant-folding ueberfluessig    */
-/*  wurde, eine PCEXPR, sofern er keine Nebenwirkungen von sich aus     */
-/*  erzeugt. Hier noch ueberpruefen, ob CEXPR besser waere.             */
-/*  Fuehrt rekursiven Abstieg durch. Ist das so korrekt?                */
-{
-    int f=p->flags;
-    if(f!=ASSIGN&&f!=ASSIGNOP&&f!=CALL&&f!=POSTINC&&f!=POSTDEC&&f!=PREINC&&f!=PREDEC){
-        p->flags=PCEXPR;
-        if(p->left) make_cexpr(p->left);
-        if(p->right) make_cexpr(p->right);
-    }
 }
 int test_assignment(type *zt,np q)
 /*  testet, ob q an Typ z zugewiesen werden darf    */
