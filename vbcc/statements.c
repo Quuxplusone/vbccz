@@ -278,14 +278,15 @@ void if_statement(void)
   }
   next_token();
   lout=++label;
+  nocode=cm;
   if(cexpr!=2){
     new=new_IC();
     new->code=BRA;
     new->typf=lout;
     add_IC(new);
   }
-  if(cexpr!=1) {nocode=cm;gen_label(lfalse);}
-  if(cexpr==1) nocode=1; else nocode=cm;
+  if(cexpr!=1) gen_label(lfalse);
+  if(cexpr==1) nocode=1;
   if(ctok->type!=LBRA){
 	  if(ctok->type!=NAME||strcmp("if",ctok->name)) {
 #ifdef HAVE_MISRA
