@@ -973,9 +973,7 @@ int type_expression2(np p,type *ttyp)
     return 1;
   }
 
-  if(f==BITFIELD) return 1;
-
-  if(f==LITERAL){
+  if(f==BITFIELD||f==LITERAL){
     p->lvalue=1;
     return 1;
   }
