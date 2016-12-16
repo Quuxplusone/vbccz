@@ -1270,6 +1270,7 @@ int do_unroll(int donothing)
     if(flags&UNROLL_INVARIANT){
       IC *new,*mc,*mn; Var *v; int out=++label,code;
       long i; type *t;static type tptrdiff={0};
+      ierror(0);  // [ajo] if this is hit, try to trigger the bug below
       if(DEBUG&1024) printf("unrolling non-constant loop\n");
       if(ISPOINTER(cmp->typf)){
 	tptrdiff.flags=PTRDIFF_T(cmp->typf);
@@ -1924,4 +1925,3 @@ int loop_optimizations(flowgraph *fg)
 
   return changed;
 }
-
