@@ -1479,15 +1479,17 @@ int do_unroll(int donothing)
     if(flags&UNROLL_REVERSE){
       IC *new,*mc; Var *v; int out=++label,code;
       long i; type *t;static type tptrdiff={0};
+      static type totherwise={0};
       if(DEBUG&1024) printf("reversing loop\n");
       if(ISPOINTER(cmp->typf)){
 	tptrdiff.flags=PTRDIFF_T(cmp->typf);
 	t=&tptrdiff;
       }else{
+	t=&totherwise;
 	if(cmp->q1.flags&VAR)
-	  t=cmp->q1.v->vtyp;
+	  t->flags=q1typ(cmp);
 	else
-	  t=cmp->q2.v->vtyp;
+	  t->flags=q2typ(cmp);
       }
       v=add_tmp_var(clone_typ(t));
       new=new_IC();
