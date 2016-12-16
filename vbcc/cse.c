@@ -164,7 +164,7 @@ void num_exp(void)
     if(DEBUG&1024){ printf("num_exp loop1\n");}
     for(p=first_ic;p;p=p->next){
         c=p->code;
-        if(p->z.flags&&p->q1.flags&&(c!=ASSIGN||(p->q1.flags&DREFOBJ)||(static_cse&&(p->q1.flags&(VAR|VARADR))==VAR&&ISSCALAR(p->q1.v->vtyp->flags)&&(p->q1.v->storage_class==EXTERN||p->q1.v->storage_class==STATIC)))&&c!=MOVETOREG&&c!=MOVEFROMREG){
+        if(p->z.flags&&p->q1.flags&&(c!=ASSIGN||((p->q1.flags&DREFOBJ)&&ISSCALAR(q1typ(p)))||(static_cse&&(p->q1.flags&(VAR|VARADR))==VAR&&ISSCALAR(q1typ(p))&&(p->q1.v->storage_class==EXTERN||p->q1.v->storage_class==STATIC)))&&c!=MOVETOREG&&c!=MOVEFROMREG){
             p->expindex=ecount++;
             if(c==ADD||c==MULT||(c>=OR&&c<=AND)){
                 if(p->q2.flags&&compare_objs(&p->q1,&p->q2,p->typf)<0&&(USEQ2ASZ||compare_objs(&p->q1,&p->z,p->typf))){
