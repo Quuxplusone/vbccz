@@ -182,13 +182,14 @@ void insert_bitfield(obj *dest,obj *src,obj *val,int bfs,int bfo,int t,int iscle
   val->flags=vmerk;
 }
 
-void inline_memcpy(np z,np q,zmax size)
+int inline_memcpy(np z,np q,zmax size)
 /*  fuegt ein ASSIGN-IC ein, das memcpy(z,q,size) entspricht    */
 {
-    IC *new=new_IC();
-    if(!ISPOINTER(z->ntyp->flags)) ierror(0);
-    if(!ISPOINTER(q->ntyp->flags)) ierror(0);
+    IC *new;
+    if(!ISPOINTER(z->ntyp->flags)) return 0;
+    if(!ISPOINTER(q->ntyp->flags)) return 0;
 
+    new=new_IC();
     if(z->flags==ADDRESS||z->flags==ADDRESSA||z->flags==ADDRESSS){
       gen_IC(z,0,0);
       new->z=z->left->o;
@@ -255,6 +256,7 @@ void inline_memcpy(np z,np q,zmax size)
     new->q2.flags=0;
     new->q2.val.vmax=size;
     add_IC(new);
+    return 1;  // success
 }
 
 void add_IC(IC *new)
@@ -1235,8 +1237,7 @@ void gen_IC(np p,int ltrue,int lfalse)
                                 if(zmeqto(zc2zm(cl->other->val.vchar),l2zm(0L))) break;
                                 cl=cl->next;
                             }
-                            if(zmleq(len,l2zm((long)INLINEMEMCPY))){
-                                inline_memcpy(p->alist->arg,n,len);
+                            if(zmleq(len,l2zm((long)INLINEMEMCPY)) && inline_memcpy(p->alist->arg,n,len)){
                                 p->o=p->alist->arg->o;
                                 return;
                             }
@@ -1247,8 +1248,7 @@ void gen_IC(np p,int ltrue,int lfalse)
                            &&p->alist->next->next->arg
                            &&p->alist->next->next->arg->flags==CEXPR){
                             eval_constn(p->alist->next->next->arg);
-                            if(zmleq(vmax,l2zm((long)INLINEMEMCPY))){
-                                inline_memcpy(p->alist->arg,p->alist->next->arg,vmax);
+                            if(zmleq(vmax,l2zm((long)INLINEMEMCPY)) && inline_memcpy(p->alist->arg,p->alist->next->arg,vmax)){
                                 p->o=p->alist->arg->o;
                                 return;
                             }
@@ -2640,4 +2640,3 @@ void savescratch(int code,IC *p,int dontsave,obj *o)
     }
   }
 }
-
