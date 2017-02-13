@@ -2406,7 +2406,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case CHAR:
 					case SHORT:
 					case INT:
-					case POINTER:
 						/* Second parameter first! */
 						push_value(fp, &ic->q2, typf, &compare2);
 						push_value(fp, &ic->q1, typf, &compare1);
@@ -2415,6 +2414,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case UNSIGNED|CHAR:
 					case UNSIGNED|SHORT:
 					case UNSIGNED|INT:
+					case POINTER:
 						/* Because the Z-machine only
 						 * has signed comparisons, we
 						 * need a dodgy algorithm to
