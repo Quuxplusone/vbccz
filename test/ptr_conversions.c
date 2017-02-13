@@ -65,5 +65,11 @@ int main()
     assert(vp_ul((void*)0x123489ABL) == 0x000089ABL);
     assert(fp_ul((void(*)())0x123489ABL) == 0x000089ABL);
 
+    // pointers compare unsigned as well
+    assert((void*)0 < &v42);
+    assert((void*)1 < &v42);
+    assert((void*)1 < (void*)-1);
+    assert(v42 < (void*)0xFFFF);
+
     puts("SUCCESS!");
 }
