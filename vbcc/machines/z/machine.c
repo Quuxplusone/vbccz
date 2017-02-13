@@ -2190,6 +2190,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case CHAR:
 					case SHORT:
 					case INT:
+					case POINTER:
 						push_value(fp, &ic->q1, CHAR, &q1);
 						pop_value(fp, &ic->z, typf, &z);
 						fprintf(fp, "\t@log_shift ");
@@ -2223,6 +2224,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case CHAR:
 					case SHORT:
 					case INT:
+					case POINTER:
 						push_value(fp, &ic->q1, CHAR, &q1);
 						pop_value(fp, &ic->z, typf, &z);
 						fprintf(fp, "\t@and ");
@@ -2257,6 +2259,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case UNSIGNED|INT:
 					case SHORT:
 					case INT:
+					case POINTER:
 						push_value(fp, &ic->q1, INT, &q1);
 						pop_value(fp, &ic->z, typf, &z);
 						if ((z.type != ZOP_STACK) || (q1.type != ZOP_STACK))
@@ -2296,6 +2299,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case CHAR:
 					case SHORT:
 					case INT:
+					case POINTER:
 						push_value(fp, &ic->q1, INT, &q1);
 						pop_value(fp, &ic->z, typf, &z);
 						if ((z.type != ZOP_STACK) || (q1.type != ZOP_STACK))
@@ -2355,6 +2359,7 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 
 					case SHORT:
 					case INT:
+					case POINTER:
 						push_addrof(fp, &ic->q1, LONG, &q1);
 						pop_value(fp, &ic->z, typf, &z);
 						fprintf(fp, "\t@loadw ");
