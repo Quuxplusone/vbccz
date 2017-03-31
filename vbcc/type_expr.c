@@ -1092,7 +1092,7 @@ int type_expression2(np p,type *ttyp)
     if(ISVECTOR(p->right->ntyp->flags)){
       p->ntyp=new_typ();
       if(ISFLOAT(VECTYPE(p->right->ntyp->flags)))
-	p->ntyp->flags=mkvec(INT,VECDIM(p->left->ntyp->flags));
+	p->ntyp->flags=mkvec(INT,VECDIM(p->right->ntyp->flags));
       else
 	p->ntyp->flags=p->right->ntyp->flags&NQ;
       return ok;
