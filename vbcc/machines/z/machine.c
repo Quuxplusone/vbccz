@@ -1090,7 +1090,7 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 		struct zop r;
 		c.type = ZOP_CONSTANT;
 		//fprintf(fp, "\t@add ");
-		switch (typf & NQ)
+		switch (typf & NU)
 		{
 			case CHAR:		c.val.constant = obj->val.vchar;	break;
 			case UNSIGNED|CHAR:	c.val.constant = obj->val.vuchar;	break;
