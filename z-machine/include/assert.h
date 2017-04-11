@@ -5,7 +5,7 @@
 #define assert(x)
 #else
 #include <stdio.h>
-#define assert(x) do { if (!(x)) puts("ASSERTION FAILURE (" #x ")"); } while (0)
+#define assert(x) do { if (!(x)) printf("ASSERTION FAILURE (" #x ") at " __FILE__ ":%d", __LINE__); } while (0)
 #endif
 
 #endif /* H_ASSERT */

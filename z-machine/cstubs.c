@@ -27,12 +27,19 @@
 
 #include <math.h>    /* sqrt */
 #include <stdio.h>   /* puts, printf */
+#include <stdlib.h>  /* abs, exit */
 #include <string.h>  /* strcat, strcmp, strcpy, strlen, strncmp */
 #include <stdarg.h>  /* va_list */
 
 /* These should have unique values, but that's about it. */
 FILE *stdin = (FILE *)&stdin;
 FILE *stdout = (FILE *)&stdout;
+FILE *stderr = (FILE *)&stderr;
+
+int abs(int x)
+{
+    return (x < 0) ? -x : x;
+}
 
 void puts(const char *s)
 {
@@ -151,14 +158,17 @@ char *strtok(char *s, const char *delim)
 
 void _print_int(int i) = "\t@print_num r0;\n";
 
-void printf(const char *format, ...)
+void vprintf(const char *format, va_list ap)
 {
     char c;
-    va_list ap;
-    va_start(ap, format);
     while (c = *format++) {
         if (c == '%') {
             switch (c = *format++) {
+                case 'c': {
+                    int i = va_arg(ap, int);
+                    putc(i, stdout);
+                    break;
+                }
                 case 'd': {
                     int i = va_arg(ap, int);
                     _print_int(i);
@@ -179,6 +189,21 @@ void printf(const char *format, ...)
             putc(c, stdout);
         }
     }
+}
+
+void printf(const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    vprintf(format, ap);
+    va_end(ap);
+}
+
+void fprintf(FILE *ignored, const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    vprintf(format, ap);
     va_end(ap);
 }
 
@@ -190,6 +215,33 @@ void sprintf(char *buf, const char *format, ...)
     while (c = *format++) {
         if (c == '%') {
             switch (c = *format++) {
+                case 'c': {
+                    int i = va_arg(ap, int);
+                    *buf++ = i;
+                    break;
+                }
+                case 'd': {
+                    int i = va_arg(ap, int);
+                    if (i == -32767 - 1) {
+                        *buf++ = '-';
+                        *buf++ = '3';
+                        *buf++ = '2';
+                        *buf++ = '7';
+                        *buf++ = '6';
+                        *buf++ = '8';
+                    } else {
+                        if (i < 0) {
+                            *buf++ = '-';
+                            i = -i;
+                        }
+                        if (i >= 10000) *buf++ = '0' + (i/10000);
+                        if (i >= 1000) *buf++ = '0' + (i/1000)%10;
+                        if (i >= 100) *buf++ = '0' + (i/100)%10;
+                        if (i >= 10) *buf++ = '0' + (i/10)%10;
+                        *buf++ = '0' + i%10;
+                    }
+                    break;
+                }
                 case 's': {
                     char *s = va_arg(ap, char*);
                     while (c = *s++)
@@ -218,4 +270,76 @@ int atoi(const char *str)
         ++str;
     }
     return result;
+}
+
+#if DEFINE_MALLOC
+
+int _libc_heap[10000];
+int *_libc_heap_pointer = _libc_heap;
+
+void *malloc(size_t bytes)
+{
+    printf("malloc(%d)\n", (int)bytes);
+    const int *_libc_heap_end = _libc_heap+1000;
+    bytes = (bytes+1) & ~1;
+    if (_libc_heap_end - _libc_heap_pointer < bytes) { puts("OUT OF MEMORY"); exit(-1); }
+    *_libc_heap_pointer++ = bytes;
+    void *p = _libc_heap_pointer;
+    _libc_heap_pointer += bytes/2;
+    return p;
+}
+
+void *realloc(void *ptr, size_t bytes)
+{
+    int *old_ptr = ptr;
+    int old_bytes = ptr ? old_ptr[-1] : 0;
+
+    printf("realloc(%d) from allocation of size %d\n", (int)bytes, (int)old_bytes);
+
+    bytes = (bytes+1) & ~1;
+
+    if (old_bytes < bytes) {
+        int *p = malloc(bytes);
+        for (int i=0; i < bytes/2 && i < old_bytes/2; ++i) {
+            p[i] = old_ptr[i];
+        }
+        return p;
+    } else {
+        return ptr;
+    }
+}
+
+void free(void *ptr)
+{
+    int *old_ptr = ptr;
+    int old_bytes = old_ptr[-1];
+    if (old_ptr + old_bytes/2 == _libc_heap_pointer) {
+        _libc_heap_pointer = old_ptr-1;
+        printf("free(%d) freed\n", (int)old_bytes);
+    } else {
+        printf("free(%d) no-op\n", (int)old_bytes);
+    }
+}
+
+#endif /* DEFINE_MALLOC */
+
+void _libc_swap(char *x, char *y, int n)
+{
+    for (int i = 0; i < n; ++i) {
+        char t = x[i];
+        x[i] = y[i];
+        y[i] = t;
+    }
+}
+
+void qsort(void *varr, size_t nelem, size_t width, int (*cmp)(const void *, const void *))
+{
+    char *arr = (char *)varr;
+    for (int i = 0; i < nelem; ++i) {
+        for (int j = i; j > 0; --j) {
+            if (cmp(arr + j*width, arr + (j-1)*width) < 0) {
+                _libc_swap(arr + j*width, arr + (j-1)*width, width);
+            }
+        }
+    }
 }
