@@ -1,6 +1,9 @@
 vbccz:
 	cd vbcc ; mkdir -p bin ; yes '' | TARGET=z make
 
+vbccppc:
+	cd vbcc ; mkdir -p bin ; yes '' | TARGET=ppc make
+
 clean:
 	find vbcc/ '(' -name '*.gcda' -o -name '*.gcno' -o -name '*.o' ')' -delete
 	make -C test/ clean
