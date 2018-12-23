@@ -3,6 +3,7 @@ export VBCC:=../vbcc
 
 CFLAGS ?= -O3 -comment-ic -comment-misc
 VBCCZ = ../vbcc/bin/vc +z -c99 $(CFLAGS) -I../z-machine/include
+MAXES = \$$MAX_ZCODE_SIZE=40000
 
 all: arrays.z8 calls.z8 conversions.z8 coverage.z8 fptr.z8 ice.z8 ice4.z8 ice5.z8 ice7.z8 int.z8 long.z8 long2.z8 ptr_conversions.z8 struct.z8 uint.z8 ulong.z8 union.z8
 
@@ -14,7 +15,7 @@ clean:
 	$(VBCCZ) -c $< -o $@ -module-name=main
 
 %.z8: .objs/%/main.s ../z-machine/cstubs.s
-	inform -v8 -ew~S~X~D +include_path=.objs/$(patsubst %.z8,%,$@),../z-machine ../z-machine/Main.inf $@
+	inform -v8 -ew~S~X~D $(MAXES) +include_path=.objs/$(patsubst %.z8,%,$@),../z-machine ../z-machine/Main.inf $@
 
 ../z-machine/cstubs.s: ../z-machine/cstubs.c
 	$(VBCCZ) -c $< -o $@ -module-name=libc
