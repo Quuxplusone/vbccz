@@ -15,20 +15,66 @@
 */
 
 /* buil-time configurable options: */
-#define NUM_GPRS 32
-#define NUM_FPRS 32
-#define NUM_CCRS 8
-#define FIXED_SP 1
+
+#undef CHAR
+#undef SHORT
+#undef INT
+#undef LONG
+#undef LLONG
+#undef FLOAT
+#undef DOUBLE
+#undef LDOUBLE
+#undef VOID
+#undef POINTER
+#undef ARRAY
+#undef STRUCT
+#undef UNION
+#undef ENUM
+#undef FUNKT
+#undef MAXINT
+#undef MAX_TYPE
+
+#define CHAR 1
+#define SHORT 2
+#define INT 3
+#define LONG 4
+#define LLONG 5
+#define FLOAT 6
+#define DOUBLE 7
+#define LDOUBLE 8
+#define VOID 9
+#define POINTER 10
+#define ARRAY 11
+#define STRUCT 12
+#define UNION 13
+#define ENUM 14
+#define FUNKT 15
+#define MAXINT 16 /* should not be accesible to application */
+#define MAX_TYPE MAXINT
+
+
+//#define NUM_FIXED 4
+#define NUM_16BIT 10
+#define NUM_32BIT 13
+#define NUM_64BIT 5
+#define NUM_8BIT  4
 
 #include "dt.h"
 
 /* internally used by the backend */
-#define FIRST_GPR 1
-#define LAST_GPR (FIRST_GPR+NUM_GPRS-1)
-#define FIRST_FPR (LAST_GPR+1)
-#define LAST_FPR (FIRST_FPR+NUM_FPRS-1)
-#define FIRST_CCR (LAST_FPR+1)
-#define LAST_CCR (FIRST_CCR+NUM_CCRS-1)
+//#define FIRST_FIXED 1
+//#define LAST_FIXED (FIRST_FIXED+NUM_FIXED-1)
+#define FIRST_16BIT 1//(LAST_FIXED+1)
+#define LAST_16BIT (FIRST_16BIT+NUM_16BIT-1)
+#define FIRST_32BIT (LAST_16BIT+1)
+#define LAST_32BIT (FIRST_32BIT+NUM_32BIT-1)
+#define FIRST_64BIT (LAST_32BIT+1)
+#define LAST_64BIT (FIRST_64BIT+NUM_64BIT-1)
+#define FIRST_8BIT (LAST_64BIT+1)
+#define LAST_8BIT (FIRST_8BIT+NUM_8BIT-1)
+#define STACK_POINTER (LAST_8BIT+1)
+
+// #define FIXED_SP 1
 
 /*  This struct can be used to implement machine-specific           */
 /*  addressing-modes.                                               */
@@ -40,7 +86,7 @@ struct AddressingMode{
 };
 
 /*  The number of registers of the target machine.                  */
-#define MAXR NUM_GPRS+NUM_FPRS+NUM_CCRS
+#define MAXR NUM_16BIT+NUM_32BIT+NUM_64BIT+NUM_8BIT+1
 
 /*  Number of commandline-options the code-generator accepts.       */
 #define MAXGF 20
@@ -53,7 +99,7 @@ struct AddressingMode{
 
 /*  This specifies the smallest integer type that can be added to a */
 /*  pointer.                                                        */
-#define MINADDI2P INT
+#define MINADDI2P CHAR
 
 /*  If the bytes of an integer are ordered most significant byte    */
 /*  byte first and then decreasing set BIGENDIAN to 1.              */
@@ -81,12 +127,14 @@ struct AddressingMode{
 
 /*  Parameters on the stack should be pushed in order rather than   */
 /*  in reverse order.                                               */
-#define ORDERED_PUSH FIXED_SP
+#define ORDERED_PUSH 1
 
 /*  Structure for reg_parm().                                       */
 struct reg_handle{
-    unsigned long gregs;
-    unsigned long fregs;
+    unsigned long regs8;
+    unsigned long regs16;
+	unsigned long regs32;
+	unsigned long regs64;
 };
 
 /*  We have some target-specific variable attributes.               */
@@ -134,15 +182,3 @@ struct reg_handle{
 /* we do not need register-pairs */
 #undef HAVE_REGPAIRS
 
-
-/* do not create CONVERT ICs from integers smaller than int to floats */
-#define MIN_INT_TO_FLOAT_TYPE INT
-
-/* do not create CONVERT ICs from floats to ints smaller than int */
-#define MIN_FLOAT_TO_INT_TYPE INT
-
-/* do not create CONVERT_ICs from floats to unsigned integers */
-#define AVOID_FLOAT_TO_UNSIGNED 1
-
-/* do not create CONVERT_ICs from unsigned integers to floats */
-#define AVOID_UNSIGNED_TO_FLOAT 1

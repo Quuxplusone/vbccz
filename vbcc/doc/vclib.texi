@@ -87,6 +87,23 @@ this code that are retained.
 @end example
 
 
+@section Global Variables
+
+@subsection timezone
+
+On some host operating systems vclib might be unable to determine the
+current time zone, which is required for functions like
+@code{mktime()} or @code{localtime()} to work. Here you can overwrite
+the following variables:
+
+@table @code
+@item long __gmtoffset
+  Offset in minutes, west of Greenwich Mean Time (GMT).
+@item int __dstflag
+  Set to non-zero, when Daylight Saving Time is active.
+@end table
+
+
 @section Embedded Systems
 
 This section describes specifics of the C library for embedded systems.

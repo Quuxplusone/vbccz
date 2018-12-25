@@ -1236,11 +1236,11 @@ representation of the data types.
   This array must contain the smallest representable number for every
     signed integer type.
 
-@item zumax t_min[MAX_TYPE+1];
+@item zumax t_max[MAX_TYPE+1];
   This array must contain the largest representable number for every
     signed integer type.
 
-@item zumax tu_min[MAX_TYPE+1];
+@item zumax tu_max[MAX_TYPE+1];
   This array must contain the largest representable number for every
     unsigned integer type.
 
