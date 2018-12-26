@@ -2581,7 +2581,7 @@ int alg_opt(np p,type *ttyp)
     }
     if(c==2){
         /*  a+0=a-0=a^0=a>>0=a<<0=a*1=a/1=a   */
-        if(((eins2==1&&(f==MULT||f==PMULT||f==DIV))||(null2&&(f==ADD||f==SUB||f==OR||f==XOR||f==LSHIFT||f==RSHIFT)))&&!p->right->sidefx){
+        if(((eins2==1&&(f==MULT||f==PMULT||f==DIV))||(null2&&(f==ADD||f==SUB||f==OR||f==XOR||f==LSHIFT||f==RSHIFT)))&&!p->right->sidefx&&(p->left->ntyp->flags==p->ntyp->flags)){
             if(DEBUG&1){if(f==MULT||f==PMULT||f==DIV) printf("a*/1->a\n"); else printf("a+-^0->a\n");}
             free_expression(p->right);
             merk=p->left;
@@ -2592,7 +2592,7 @@ int alg_opt(np p,type *ttyp)
             return type_expression2(p,ttyp);
         }
         /*  a*0=0   */
-        if(null2&&(f==MULT||f==PMULT||f==AND||f==DIV||f==MOD)&&!p->sidefx){
+        if(null2&&(f==MULT||f==PMULT||f==AND||f==DIV||f==MOD)&&!p->sidefx&&(p->left->ntyp->flags==p->ntyp->flags)){
             if(DEBUG&1) printf("a*&/%%0->0\n");
             if(null2&&(f==DIV||f==MOD)) error(84);
             if(p->flags==PMULT) p->flags=PCEXPR; else p->flags=CEXPR;
@@ -2606,7 +2606,7 @@ int alg_opt(np p,type *ttyp)
 /*            return(type_expression2(p,ttyp));   */
             return 1;
         }
-        if(eins2==-1&&(f==MULT||f==PMULT||f==DIV)&&!p->right->sidefx){
+        if(eins2==-1&&(f==MULT||f==PMULT||f==DIV)&&!p->right->sidefx&&(p->left->ntyp->flags==p->ntyp->flags)){
             if(DEBUG&1) printf("a*/(-1)->-a\n");
             free_expression(p->right);
             p->right=0;
