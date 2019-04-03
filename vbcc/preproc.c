@@ -429,6 +429,7 @@ struct strnode *AllocSpace()
             newnode->flags = newnode->number = 0;
             return (newnode);
         }
+        free(newstr);
     }
     return (NULL);
 }
