@@ -1,4 +1,4 @@
-/*  $VER: vbcc (opt.c) $Revision: 1.46 $    */
+/*  $VER: vbcc (opt.c) $Revision: 1.48 $    */
 /*  allgemeine Routinen fuer den Optimizer und Steuerung der einzelnen  */
 /*  Laeufe                                                              */
 
@@ -534,7 +534,7 @@ void recalc_offsets(flowgraph *g)
   used=mymalloc(sizeof(bvtype *)*(vcount-rcount));
   /*  Tabelle, welche Variable in welchem Block belegt ist, aufbauen  */
   for(i=0;i<vcount-rcount;i++){
-    if(zmleq(l2zm(0L),vilist[i]->offset)&&(vilist[i]->storage_class==AUTO||vilist[i]->storage_class==REGISTER)){
+    if((vilist[i]->storage_class==AUTO||vilist[i]->storage_class==REGISTER)&&zmleq(l2zm(0L),vilist[i]->offset)){
       if(DEBUG&2048) printf("setting up for %s,%ld\n",vilist[i]->identifier,zm2l(vilist[i]->offset));
       used[i]=mymalloc(bsize);
       memset(used[i],0,bsize);
@@ -1726,6 +1726,11 @@ static int cross_module_inline(int only_full)
 	while(ip){
 	  Var *iv;
 	  int c;
+	  if(ip->code==CONVERT&&(ip->q1.flags&(VAR|DREFOBJ))==VAR&&(ip->q1.v->flags&CONVPARAMETER)&&(ip->z.flags&(VAR|DREFOBJ))==VAR&&ip->q1.v==ip->z.v){
+	    if(DEBUG&1024) {printf("eliminate oldstyle CONVERT:\n");pric2(stdout,ip);}
+	    ip=ip->next;
+	    continue;
+	  }
 	  new=new_IC();
 	  *new=*ip;
 	  ip->copy=new;

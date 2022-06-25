@@ -232,7 +232,7 @@ void insert_regs(flowgraph *fg1)
             if(p==fg->end) break;
             p=p->next;
         }
-        if(fg->start&&fg->start->code==LABEL) lic=fg->start;
+        if(fg->start&&fg->start->code==LABEL&&fg!=fg1) lic=fg->start;
         for(i=1;i<=MAXR;i++){
             if(fg->regv[i]){
                 if(DEBUG&8192){
@@ -925,6 +925,9 @@ static Var *add_const_var(obj *o,int t)
   v->identifier=" constant";
   v->flags=0;
   v->reg=0;
+#ifdef HAVE_TARGET_ATTRIBUTES
+  v->tattr=0;
+#endif
   cidx++;
   v->offset=l2zm(cidx);
   if(last_const){
