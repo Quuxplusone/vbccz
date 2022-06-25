@@ -1,4 +1,4 @@
-/*  $VER: vbcc (flow.c) $Revision: 1.12 $    */
+/*  $VER: vbcc (flow.c) $Revision: 1.13 $    */
 /*  Generierung des FLussgraphs und Optimierungen des Kontrollflusses   */
 
 #include "opt.h"
@@ -514,6 +514,8 @@ flowgraph *jump_optimization(void)
                         if(lp->graph&&lp->graph!=g&&(lp->graph->branchout==a||!lp->graph->end||lp->graph->end->code!=BRA)) i=1;
                     for(lp=b->in;lp;lp=lp->next)
                         if(lp->graph&&lp->graph!=g&&(lp->graph->branchout==b||!lp->graph->end||lp->graph->end->code!=BRA)) i=1;
+		    if(as->code==CALL&&as->next&&(as->next->code==GETRETURN||as->code==NOP)) i=1;
+		    if(bs->code==CALL&&bs->next&&(bs->next->code==GETRETURN||bs->code==NOP)) i=1;
                     if(!i){
                         if(!(tp=g->end->prev)) ierror(0);
                         if(tp->code!=TEST&&tp->code!=COMPARE)
