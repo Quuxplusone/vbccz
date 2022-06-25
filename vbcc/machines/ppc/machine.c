@@ -10,7 +10,7 @@ static char FILE_[]=__FILE__;
 /*  Public data that MUST be there.                             */
 
 /* Name and copyright. */
-char cg_copyright[]="vbcc code-generator for PPC V0.6c (c) in 1997-2008 by Volker Barthelmann";
+char cg_copyright[]="vbcc code-generator for PPC V0.7 (c) in 1997-2022 by Volker Barthelmann";
 
 /*  Commandline-flags the code-generator accepts                */
 int g_flags[MAXGF]={STRINGFLAG,STRINGFLAG,0,0,0,0,

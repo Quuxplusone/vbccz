@@ -1,6 +1,7 @@
-/*  $VER: vbcc (declaration.c) $Revision: 1.67 $    */
+/*  $VER: vbcc (declaration.c) $Revision: 1.85 $    */
 
 #include <string.h>
+#include <stdio.h>
 
 #include "vbcc_cpp.h"
 #include "vbc.h"
@@ -19,6 +20,7 @@ static int did_return_label;
 #ifdef HAVE_TARGET_ATTRIBUTES
 unsigned long return_tattr;
 #endif
+zumax return_mask;
 zmax init_dyn_sz,init_const_sz;
 int init_dyn_cnt,init_const_cnt;
 
@@ -100,7 +102,7 @@ static char *get_string(void)
   p=mymalloc(l);
   cl=tree->cl;l=0;
   while(cl){
-    p[l]=zm2l(zc2zm(cl->other->val.vchar));
+    p[l]=CHARBACK(zm2l(zc2zm(cl->other->val.vchar)));
     l++;
     cl=cl->next;
   }
@@ -134,6 +136,7 @@ int settyp(int typnew, int typold)
   if(typold==LONG&&typnew==FLOAT){ error(203); return DOUBLE;}
   if(typold==LONG&&typnew==DOUBLE) return LDOUBLE;
   if(c99&&typold==LONG&&typnew==LONG) return LLONG;
+  if(typold==INT&&(typnew==SHORT||typnew==LONG)) return typnew;
   if(typold!=0&&typnew!=INT){error(47);return(typnew);}
   if(typold==0&&typnew==INT) return(INT);
   if(typold==0) return(typnew);
@@ -160,6 +163,7 @@ type *declaration_specifiers(void)
 /* removed */
 #endif
   char *imerk,sident[MAXI],sbuff[MAXI],*attr=0,*vattr=0;
+  zumax mask=ul2zum(0UL);
   type *new=new_typ(),*t,*ts;
   struct_declaration *ssd;
   struct_list (*sl)[];
@@ -365,6 +369,7 @@ type *declaration_specifiers(void)
 /* removed */
 #endif
 #ifdef HAVE_ECPP
+/* removed */
 /* removed */
 /* removed */
 /* removed */
@@ -844,6 +849,23 @@ type *declaration_specifiers(void)
         killsp();
         if(ctok->type==RPAR) next_token(); else error(59);
         killsp();
+      }else if(!strcmp("__mask",ctok->name)){
+	np tree;
+	next_token();killsp();
+        if(ctok->type==LPAR) next_token(); else error(151);
+	tree=expression();
+	if(tree&&type_expression(tree,0)){
+	  if(tree->flags==CEXPR&&ISINT(tree->ntyp->flags)){
+	    eval_const(&tree->val,tree->ntyp->flags);
+	    mask=vumax;
+	  }else
+	    error(18);
+	  free_expression(tree);
+	}else
+	  error(18);
+        killsp();
+        if(ctok->type==RPAR) next_token(); else error(59);
+        killsp();
       }else if(/*!(c_flags[7]&USEDFLAG)&&*/!strcmp("__attr",ctok->name)){
         char *d;
         next_token();killsp(); 
@@ -973,6 +995,7 @@ type *declaration_specifiers(void)
   return_sc=storage_class;
   return_reg=hard_reg;
   return_vattr=vattr;
+  return_mask=mask;
   return_inline=have_inline;
 #ifdef HAVE_ECPP
 /* removed */
@@ -1129,7 +1152,7 @@ type *direct_declarator(type *a)
         }else{
           if(tree->sidefx&&!c99) error(60);
           if(tree->flags!=CEXPR||!ISINT(tree->ntyp->flags)){
-	    if(!c99)
+	    if(!c99||!ALLOCVLA_INLINEASM)
 	      error(19);
 	    else{
 	      type *st;IC *new;
@@ -1281,6 +1304,7 @@ type *direct_declarator(type *a)
           (*sl)[fsd->count].styp=new_typ();
           (*sl)[fsd->count].styp->flags=VOID;
           (*sl)[fsd->count].styp->next=0;
+          (*sl)[fsd->count].reg=0;
           (*sl)[fsd->count].identifier=empty;
 #ifdef HAVE_ECPP
 /* removed */
@@ -1389,6 +1413,7 @@ int declaration(int offset)
     else if(/*!(c_flags[7]&USEDFLAG)&&*/!strcmp("__reg",ctok->name)) fl=1;
     else if(/*!(c_flags[7]&USEDFLAG)&&*/!strcmp("__attr",ctok->name)) fl=1;
     else if(/*!(c_flags[7]&USEDFLAG)&&*/!strcmp("__vattr",ctok->name)) fl=1;
+    else if(/*!(c_flags[7]&USEDFLAG)&&*/!strcmp("__mask",ctok->name)) fl=1;
     else if(/*!(c_flags[7]&USEDFLAG)&&*/!strcmp("__readsmem",ctok->name)) fl=1;
     else if(/*!(c_flags[7]&USEDFLAG)&&*/!strcmp("__writesmem",ctok->name)) fl=1;
     else{
@@ -1970,8 +1995,8 @@ Var *add_var(char *identifier, type *t, int storage_class,const_list *clist)
   zmax al;
   /*if(*identifier==0) return;*/ /* sollte woanders bemaekelt werden */
   if(DEBUG&2) printf("add_var(): %s\n",identifier);
-#ifdef HAVE_TARGET_VARHOOK
-  add_var_hook(identifier,t,storage_class,clist);
+#ifdef HAVE_TARGET_VARHOOK_PRE
+  add_var_hook_pre(identifier,t,storage_class,clist);
 #endif
 #ifdef HAVE_MISRA
 /* removed */
@@ -2001,6 +2026,8 @@ Var *add_var(char *identifier, type *t, int storage_class,const_list *clist)
   new->dline=0;
   new->description=0;
   new->tunit=last_tunit;
+  new->inline_copy=0;
+  new->index=-1;
 #ifdef HAVE_TARGET_ATTRIBUTES
   new->tattr=0;
 #endif
@@ -2153,6 +2180,9 @@ Var *add_var(char *identifier, type *t, int storage_class,const_list *clist)
   }
   if(is_vlength(new->vtyp))
     create_allocvl(new);
+#ifdef HAVE_TARGET_VARHOOK_POST
+  add_var_hook_post(new);
+#endif
   return(new);
 }
 void free_var(Var *p)
@@ -2255,7 +2285,7 @@ int check_zero_initialisation(const_list* cl, int typ)
    or if a table copy should be used first */
 int use_only_dyn_init(zmax sz,zmax dyn_sz,zmax const_sz,int dyn_cnt,int const_cnt)
 {
-  if(zmleq(sz,l2zm(32L)))
+  if(zmleq(sz,l2zm(clist_copy_stack)))
     return 1;
   if(zmeqto(dyn_sz,l2zm(0L)))
     return 0;
@@ -2288,7 +2318,7 @@ void init_local_compound(Var *v)
     }else{
       /*  Array etc.  */
       Var *nv;
-      if(!use_only_dyn_init(szof(v->vtyp),init_dyn_sz,init_const_sz,init_dyn_cnt,init_const_cnt)){
+      if(!ISSCALAR(v->vtyp->flags)&&!use_only_dyn_init(szof(v->vtyp),init_dyn_sz,init_const_sz,init_dyn_cnt,init_const_cnt)){
 	nv=add_var(empty,clone_typ(v->vtyp),STATIC,v->clist);
 	nv->flags|=DEFINED;
 	nv->dfilename=filename;
@@ -2324,6 +2354,7 @@ void var_declaration(void)
     had_decl,hard_reg,mhr,diffunit=0,inline_flag;
   Var *v;
   char *vattr;
+  zumax mask;
   int base_type;
 #ifdef HAVE_TARGET_ATTRIBUTES
   unsigned long tattr;
@@ -2336,7 +2367,7 @@ void var_declaration(void)
 #endif
   ts=declaration_specifiers();notdone=1;
 
-  storage_class=return_sc;hard_reg=return_reg;vattr=return_vattr;
+  storage_class=return_sc;hard_reg=return_reg;vattr=return_vattr;mask=return_mask;
   inline_flag=return_inline;
 #ifdef HAVE_ECPP
 /* removed */
@@ -2461,13 +2492,10 @@ void var_declaration(void)
         }
 #endif
         if(vattr){
-          if(v->vattr){
-            v->vattr=myrealloc(v->vattr,strlen(v->vattr)+strlen(vattr)+2);
-            strcat(v->vattr,";");
-            strcat(v->vattr,vattr);
-          }else v->vattr=vattr;
+	  add_attr(&v->vattr,vattr);
           if(ISFUNC(v->vtyp->flags)) fi_from_attr(v);
         }
+
         if(!isfunc){
           if(!ISARRAY(t->flags)||!zmeqto(t->size,l2zm(0L))){
             free(v->vtyp);
@@ -2499,7 +2527,16 @@ void var_declaration(void)
 /* removed */
 #endif
       v->reg=hard_reg;
-      v->vattr=vattr;
+      if(vattr)
+	add_attr(&v->vattr,vattr);
+      if(!zumeqto(mask,ul2zum(0UL))){
+	char *new=mymalloc(strlen(v->identifier)+16);
+	strcpy(new,v->identifier);
+	strcat(new,".");
+	sprintf(new+strlen(new),"%lu",zum2ul(mask));
+	v->identifier=add_identifier(new,strlen(new));
+	free(new);
+      }
       if(ISFUNC(v->vtyp->flags))
         fi_from_attr(v);
 #ifdef HAVE_TARGET_ATTRIBUTES
@@ -2556,6 +2593,7 @@ void var_declaration(void)
       if(v->fi){free(v->fi->inline_asm);v->fi->inline_asm=0;}
       if(!v->fi) v->fi=new_fi();
       v->fi->inline_asm=get_string();
+      /*STRBACK(v->fi->inline_asm);*/
       mdef=1;
     }else{
       /*if(v->fi){free(v->fi->inline_asm);v->fi->inline_asm=0;}*/
@@ -2659,6 +2697,7 @@ void var_declaration(void)
       for(i=1;i<=MAXR;i++) {regs[i]=regused[i]=regsa[i];regsbuf[i]=0;}
     }
     cur_func=v->identifier;
+    cur_funcv=v;
     if(only_inline==2) only_inline=0;
     if(nesting<1) enter_block();
     if(nesting>1) error(32);
@@ -2746,6 +2785,7 @@ void var_declaration(void)
       sl[0].styp=new_typ();
       sl[0].styp->flags=VOID;
       sl[0].styp->next=0;
+      sl[0].reg=0;
       nesting--;
       add_sl(t->exact,&sl);
       nesting++;
@@ -2791,7 +2831,9 @@ void var_declaration(void)
       }
     }
     first_ic=last_ic=0;ic_count=0;max_offset=l2zm(0L);
+    if(!zmleq(local_offset[1],Z0)) max_offset=local_offset[1];
     for(i=0;i<t->exact->count;i++){
+      /* TODO: missing pointer for struct return */
 #ifdef HAVE_REGPARMS
       int didrp=0;
       if((*t->exact->sl)[i].styp){
@@ -2894,6 +2936,7 @@ void var_declaration(void)
 /* removed */
 /* removed */
 #endif
+    cur_funcv=0;
     disallow_statics=0;
     if(block_vla[nesting]) clearvl();
     if((v->vtyp->next->flags&NQ)!=VOID&&!has_return){
@@ -3056,6 +3099,7 @@ int compare_sd(struct_declaration *a,struct_declaration *b)
   if(a->count!=b->count) return(0);
   for(i=0;i<a->count;i++){
     if((*a->sl)[i].styp&&(*b->sl)[i].styp&&!compatible_types((*a->sl)[i].styp,(*b->sl)[i].styp,NU)) return(0);
+    if((*a->sl)[i].reg!=(*b->sl)[i].reg) {error(368);return 0;}
 #ifdef HAVE_MISRA
 /* removed */
 /* removed */
@@ -3277,6 +3321,16 @@ void gen_clist(FILE *f,type *t,const_list *cl)
 /*  Generiert dc fuer const_list.                           */
 {
   int i,bfo,bfs;zmax sz;zumax bfval=ul2zum(0UL);
+
+#if 0
+  for(i=0;i<(int)szof(t);i++){
+    zuchar c;int s;
+    s=get_clist_byte(t,cl,i,&c);
+    printf("%03d: 0x%02x (%d)\n",i,(int)c,s);
+  }
+#endif
+
+
   if(ISARRAY(t->flags)){
     for(sz=l2zm(0L);!zmleq(t->size,sz)&&cl;cl=cl->next){
       if(!cl->other){ierror(0);return;}
@@ -3494,6 +3548,7 @@ Var *declare_builtin(char *name,int ztyp,int q1typ,int q1reg,int q2typ,int q2reg
     }
     (*sd->sl)[args-1].styp=new_typ();
     (*sd->sl)[args-1].styp->flags=VOID;
+    (*sd->sl)[args-1].reg=0;
     t=new_typ();
     t->flags=FUNKT;
     t->exact=add_sd(sd,FUNKT);
@@ -3712,7 +3767,7 @@ const_list *initialization(type *t,int noconst,int level,int desi,struct_declara
 
     if(!tree){error(45);return(0);}
     if(!noconst) const_expr=1;
-    if(!type_expression(tree,0)){free_expression(tree); const_expr=oldconst;return 0;}
+    if(!type_expression(tree,t)){free_expression(tree); const_expr=oldconst;return 0;}
     const_expr=oldconst;
 
     tree=makepointer(tree);

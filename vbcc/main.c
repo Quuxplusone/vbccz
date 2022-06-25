@@ -1,4 +1,4 @@
-/*  $VER: vbcc (main.c) $Revision: 1.50 $    */
+/*  $VER: vbcc (main.c) $Revision: 1.66 $    */
 #include "vbcc_cpp.h"
 #include "vbc.h"
 #include "opt.h"
@@ -72,8 +72,9 @@ void translation_unit(void)
     killsp();
     if(eof||ctok->type!=NAME){
       if(!eof){
-	error(0);
-	raus();
+	error(369);
+	next_token();
+	continue;
       }else{
 	if(cross_module){
 	  int n=0;
@@ -349,6 +350,11 @@ void gen_function(FILE *f,Var *v,int real_gen)
   cur_func=v->identifier;
   if(!real_gen){
     optimize(optflags,v);
+    if((force_statics||prefer_statics)&&first_var[nesting]){
+      
+      last_var[nesting]->next=v->fi->vars;
+      v->fi->vars=first_var[nesting];
+    }
     memset(regs_modified,0,RSIZE);
     /* pseudeo generator pass to get regs_modified */
     v->fi->opt_ic=clone_ic(first_ic);
@@ -572,6 +578,7 @@ int main(int argc,char *argv[])
   if(c_flags[31]&USEDFLAG) inline_depth=c_flags_val[31].l;
   if(c_flags[32]&USEDFLAG) debug_info=1;
   if(c_flags[33]&USEDFLAG) c99=1;
+  if(c_flags[60]&USEDFLAG) c99=0;
   if(c_flags[34]&USEDFLAG) {wpo=1;no_emit=1;}
   if(c_flags[36]&USEDFLAG) {noitra=1;}
   if(c_flags[37]&USEDFLAG) {
@@ -609,13 +616,20 @@ int main(int argc,char *argv[])
     if(hs!=0) hash_ext=new_hashtable(hs);
   }
 
+
   if(wpo){
     cross_module=1;
     optflags=-1;
   }
   if(optsize){
     if(!(c_flags[25]&USEDFLAG)) unroll_size=0;
+    clist_copy_pointer=clist_copy_stack;
   }
+
+  if(optspeed){
+    clist_copy_pointer=256;
+  }
+
   if(ecpp&&c99){
 	  error(333, "c99", "ecpp");
   }
@@ -640,6 +654,26 @@ int main(int argc,char *argv[])
   if(files<=0&&!(c_flags[35]&USEDFLAG)) error(6);
   stackalign=l2zm(0L);
   if(!init_cg()) exit(EXIT_FAILURE);
+
+  if(c_flags[55]&USEDFLAG) {clist_copy_stack=c_flags_val[55].l;}
+  if(c_flags[56]&USEDFLAG) {clist_copy_static=c_flags_val[56].l;}
+  if(c_flags[57]&USEDFLAG) {clist_copy_pointer=c_flags_val[57].l;}
+  if(c_flags[58]&USEDFLAG) {inline_memcpy_sz=c_flags_val[58].l;}
+  if(c_flags[61]&USEDFLAG) {force_statics=1;}
+  if(c_flags[62]&USEDFLAG) {prefer_statics=1;}
+  if(c_flags[63]&USEDFLAG) {range_opt=1;}
+  if(c_flags[64]&USEDFLAG) {merge_strings=1;}
+  if(c_flags[65]&USEDFLAG) {sec_per_obj=1;}
+  if(c_flags[66]&USEDFLAG) {no_eff_ics=1;}
+  if(c_flags[67]&USEDFLAG) {early_eff_ics=1;}
+
+
+  if(!(optflags&2)){
+    for(i=1;i<=MAXR;i++){
+      sregsa[i]=regsa[i];
+      if(regsa[i]==REGSA_TEMPS) regsa[i]=0;
+    }
+  }
   if(zmeqto(stackalign,l2zm(0L)))
     stackalign=maxalign;
   for(i=0;i<=MAX_TYPE;i++)
@@ -713,8 +747,12 @@ int main(int argc,char *argv[])
       char *p;
       depout=open_out(inname,"dep");
       /* nicht super schoen (besser letzten Punkt statt ersten), aber kurz.. */
-      for(p=inname;*p&&*p!='.';p++) fprintf(depout,"%c",*p);
-      fprintf(depout,".o: %s",inname);
+      if(c_flags[59]&USEDFLAG){
+	fprintf(depout,"%s: %s",c_flags_val[59].p,inname);
+      }else{
+	for(p=inname;*p&&*p!='.';p++) fprintf(depout,"%c",*p);
+	fprintf(depout,".o: %s",inname);
+      }
     }
     if(c_flags[18]&USEDFLAG) ppout=open_out(inname,"i");
     if(!input_wpo){
@@ -753,6 +791,10 @@ int main(int argc,char *argv[])
       define_macro(&ls,"__noinline=__vattr(\"noinline()\")");
       if(c99)
 	define_macro(&ls,"__STDC_VERSION__=199901L");
+      if(optspeed)
+	define_macro(&ls,"__OPTSPEED__");
+      if(optsize)
+	define_macro(&ls,"__OPTSIZE__");
       misracheck=mcmerk;
       enter_file(&ls,ls.flags);
     }
@@ -900,7 +942,9 @@ int main(int argc,char *argv[])
     for(v=first_ext;v;v=v->next){
       if((v->flags&(DEFINED|TENTATIVE))&&(v->flags&(INLINEFUNC|INLINEEXT))!=INLINEFUNC){
 	if(!final||!strcmp(v->identifier,"main")||(v->vattr&&strstr(v->vattr,"entry"))){
+#ifndef NO_OPTIMIZER
 	  used_objects(v);
+#endif
 	  if(ISFUNC(v->vtyp->flags)) do_function(v);
 	}
       }
@@ -1766,11 +1810,13 @@ void do_error(int errn,va_list vl)
 /*  Behandelt Ausgaben wie Fehler und Meldungen */
 {
   int type,have_stack=0;
+    int treat_warning_as_error=0;
     char *errstr="",*txt=filename;
     if(c_flags_val[8].l&&c_flags_val[8].l<=errors)
       return;
     if(errn==-1) errn=158;
     type=err_out[errn].flags;
+    treat_warning_as_error=(type&WARNING)&&(c_flags[54]&USEDFLAG);
 #ifdef HAVE_MISRA
 /* removed */
 #endif
@@ -1824,7 +1870,8 @@ void do_error(int errn,va_list vl)
 	fprintf(stderr,"\tincluded from file \"%s\":%ld\n",sc[i].long_name?sc[i].long_name:sc[i].name,sc[i].line);
       }
     }
-    if(type&ERROR){
+    if(treat_warning_as_error){fprintf(stderr,"warning %d treated as error [-warnings-as-errors]\n",errn);}
+    if(type&ERROR||treat_warning_as_error){
       errors++;
       if(c_flags_val[8].l&&c_flags_val[8].l<=errors&&!(type&NORAUS))
 	{fprintf(stderr,"Maximum number of errors reached!\n");raus();}

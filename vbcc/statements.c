@@ -1,4 +1,4 @@
-/*  $VER: vbcc (statements.c)  $Revision: 1.24 $  */
+/*  $VER: vbcc (statements.c)  $Revision: 1.29 $  */
 
 #include "vbcc_cpp.h"
 #include "vbc.h"
@@ -335,7 +335,7 @@ void switch_statement(void)
       if(!ISINT(tree->ntyp->flags)){
 	error(138);
       } else {
-	int m1,m2,m3,def=0,rm,minflag;
+	int m1,m2,m3,def=0,rm,rm1,rm2,minflag;
 	zmax l,ml,s;zumax ul,mul,us;
 	if(tree->flags==ASSIGN&&tree->right->flags!=CALL) error(164);
 #ifdef HAVE_MISRA
@@ -364,6 +364,12 @@ void switch_statement(void)
 	  int r=tree->o.reg;
 	  rm=regs[r];
 	  regs[r]=regsa[r];
+	  if(reg_pair(r,&rp)){
+	    rm1=regs[rp.r1];
+	    rm2=regs[rp.r2];
+	    regs[rp.r1]=regsa[rp.r1];
+	    regs[rp.r2]=regsa[rp.r2];
+	  }
 	}
 	merk_fic=first_ic;merk_lic=last_ic;
 	
@@ -375,7 +381,14 @@ void switch_statement(void)
 	  switchbreak=merk_sb;
 	}
 	
-	if((tree->o.flags&(SCRATCH|REG))==(SCRATCH|REG)) regs[tree->o.reg]=rm;
+	if((tree->o.flags&(SCRATCH|REG))==(SCRATCH|REG)){
+	  int r=tree->o.reg;
+	  regs[r]=rm;
+	  if(reg_pair(r,&rp)){
+	    regs[rp.r1]=rm1;
+	    regs[rp.r2]=rm2;
+	  }
+	}
 	minflag=0;s=l2zm(0L);us=ul2zum(0UL);
 	num_cases=0;
 #ifdef HAVE_MISRA
@@ -503,6 +516,7 @@ void switch_statement(void)
 	  if(merk_lic) merk_lic->next=new; else merk_fic=new;
 	  merk_lic=new;
 	  regs[tree->o.reg]=regsa[tree->o.reg];
+	  if(reg_pair(tree->o.reg,&rp)){ regs[rp.r1]=regsa[rp.r1];regs[rp.r2]=regsa[rp.r2];}
 	}
 	new=new_IC();
 	new->line=0;
@@ -1001,7 +1015,7 @@ void continue_statement(void)
 /* removed */
 #endif
   if(cont_label==0){error(145);return;}
-  if(block_vla[nesting]) freevl();
+  //if(block_vla[nesting]) freevl();
   new=new_IC();
   new->code=BRA;
   new->typf=cont_label;
@@ -1019,7 +1033,7 @@ void break_statement(void)
 /* removed */
 #endif
   if(break_label==0){error(146);return;}
-  if(block_vla[nesting]) freevl();
+  //if(block_vla[nesting]) freevl();
   new=new_IC();
   new->code=BRA;
   new->typf=break_label;
@@ -1118,6 +1132,7 @@ void return_statement(void)
 	    new->z.dtyp=POINTER_TYPE(return_typ);
 	    new->z.val.vmax=l2zm(0L);
 	    new->z.v=return_var;
+	    new->z.reg=0;
 	  }else{
 	    new->code=SETRETURN;
 	    new->z.reg=ffreturn(return_typ);

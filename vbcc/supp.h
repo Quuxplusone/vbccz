@@ -1,4 +1,4 @@
-/*  $VER: vbcc (supp.h) $Revision: 1.38 $     */
+/*  $VER: vbcc (supp.h) $Revision: 1.56 $     */
 
 
 #ifndef SUPP_H
@@ -65,6 +65,7 @@ typedef unsigned int bvtype;
 #define STRINGCONST (UNCOMPLETE<<1)
 #define BOOLEAN (STRINGCONST<<1)
 #define SIGNED_CHARACTER (BOOLEAN<<1)
+#define PVOLATILE (SIGNED_CHARACTER<<1)
 #ifdef HAVE_ECPP
 /* removed */
 /* removed */
@@ -87,6 +88,11 @@ typedef unsigned int bvtype;
 #define terror(x) error(324,x);
 /* this header is provided by the code generator */
 #include "machine.h"
+#define Z0 l2zm(0L)
+#define Z1 l2zm(1L)
+#define ZU0 ul2zum(0UL)
+#define ZU1 ul2zum(1UL)
+
 #ifndef HAVE_EXT_TYPES
 typedef zllong zmax;
 typedef zullong zumax;
@@ -145,6 +151,9 @@ typedef zullong zumax;
 #ifndef MAXADDUI2P
 #define MAXADDUI2P (MAXADDI2P|UNSIGNED)
 #endif
+#ifndef BESTCOPYT
+#define BESTCOPYT INT
+#endif
 #define RSIZE BVSIZE(MAXR+1)
 #define ALL_CALLS 1
 #define ALL_REGS  2
@@ -158,6 +167,7 @@ typedef zullong zumax;
 #define WARNED_REGS 512
 #define USES_VLA 1024
 #define NO_INLINE 2048
+#define FULL_INLINE 4096
 typedef struct reg_handle treg_handle;
 typedef struct tunit{
   struct Var *statics;
@@ -187,10 +197,16 @@ typedef struct function_info{
 #endif
   zumax stack1;
   zumax stack2;
+  long inline_size;  /* size after inlining/optimizing for cross-module */
+  int inline_depth;  /* minimum depth for cross-module-inlining */
 } function_info;
+typedef int typfl;
+#if PVOLATILE >= INT_MAX
+#error "need host with larger int size"
+#endif
 /*  struct for types.    */
 typedef struct Typ{
-  int flags;  /*  see above   */
+  typfl flags;  /*  see above   */
   struct Typ *next;
   struct struct_declaration *exact;   /* used for STRUCT/UNION/FUNKT  */
   zmax size;     /*  used for ARRAY  */
@@ -301,7 +317,8 @@ typedef struct Var{
 #define DBLPUSH 16384       /* parameter is also on the stack */
 #define NOTINTU 32768       /* variable not (yet) defined in this translation-unit */
 #define REFERENCED 65536    /* variable referenced */
-#define INLINEFUNC (REFERENCED*2)
+#define STATICAUTO 131072   /* auto variable converted to static */
+#define INLINEFUNC (STATICAUTO*2)
 #define INLINEEXT (INLINEFUNC*2)
 #define BUILTIN (INLINEFUNC*2)
 
@@ -530,7 +547,10 @@ typedef struct varlist{
 } varlist;
 #define VLS sizeof(struct varlist)
 extern struct IC *first_ic,*last_ic;
+#define REGSA_NEVER 1
+#define REGSA_TEMPS 2
 extern int regs[MAXR+1],regsa[MAXR+1],regused[MAXR+1],simple_scratch[MAXR+1];
+extern int sregsa[MAXR+1];
 extern int reg_prio[MAXR+1],regscratch[MAXR+1];
 extern zmax regsize[MAXR+1];
 extern type *regtype[MAXR+1];
@@ -554,10 +574,15 @@ extern zmax max_offset;
 extern int function_calls,vlas;
 extern int coloring;
 extern int dmalloc;
+extern int sec_per_obj;
 extern int disable;
 extern int misracheck,misraversion,misracomma,misratok;
 extern int pack_align;
 extern int short_push;
+extern int static_cse,dref_cse;
+extern int no_eff_ics,early_eff_ics;
+extern int force_statics,prefer_statics;
+extern int range_opt;
 extern int default_unsigned;
 
 /*  Das haette ich gern woanders    */
@@ -609,6 +634,10 @@ extern int multiple_ccs;
 extern int float_used;
 extern IC *err_ic;
 extern long maxoptpasses,optflags,inline_size,unroll_size,inline_depth;
+extern long clist_copy_stack;
+extern long clist_copy_static;
+extern long clist_copy_pointer;
+extern long inline_memcpy_sz;
 extern int noaliasopt,fp_assoc,noitra;
 extern Var *vl0,*vl1,*vl2,*vl3;
 extern char *filename;
@@ -672,7 +701,10 @@ extern Var *vlength_szof(type *);
 extern zmax struct_offset(struct_declaration *,const char *);
 extern zmax falign(type *);
 int get_first_base_type(type *);
+extern int objs_equal(obj *,obj *,int);
 extern void eval_const(union atyps *,int);
+extern int get_clist_byte(type *,const_list *, zmax, zuchar *);
+extern zumax get_clist_int(type *, const_list *, zmax, int, int *);
 extern function_info *new_fi(void);
 extern void free_fi(function_info *);
 extern void print_fi(FILE *,function_info *);
@@ -760,9 +792,15 @@ extern int handle_pragma(const char *);
 #endif
 #ifdef HAVE_LIBCALLS
 extern char *use_libcall(int code,int t1,int t2);
+#ifndef LIBCALL_CMPTYPE
+#define LIBCALL_CMPTYPE INT
 #endif
-#ifdef HAVE_TARGET_VARHOOK
-extern void add_var_hook(const char *,type *,int,const_list *);
+#endif
+#ifdef HAVE_TARGET_VARHOOK_PRE
+extern void add_var_hook_pre(const char *,type *,int,const_list *);
+#endif
+#ifdef HAVE_TARGET_VARHOOK_POST
+extern void add_var_hook_post(Var *);
 #endif
 extern int cost_savings(IC *,int,obj *);
 /* additional declarations for targets which pass arguments in */
@@ -813,6 +851,15 @@ extern void mark_eff_ics(void);
 #ifndef AVOID_UNSIGNED_TO_FLOAT
 #define AVOID_UNSIGNED_TO_FLOAT 0
 #endif
+#ifndef CHARCONV
+#define CHARCONV(x) (x)
+#define CHARBACK(x) (x)
+#define STRBACK(x)
+#else
+unsigned char CHARBACK(unsigned char);
+void STRBACK(unsigned char *);
+#endif
+
 #if HAVE_OSEK
 /* removed */
 /* removed */

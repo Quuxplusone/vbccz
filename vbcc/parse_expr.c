@@ -1,4 +1,4 @@
-/*  $VER: vbcc (parse_expr.c) $Revision: 1.16 $  */
+/*  $VER: vbcc (parse_expr.c) $Revision: 1.21 $  */
 
 #include "vbcc_cpp.h"
 #include "vbc.h"
@@ -678,7 +678,8 @@ const_list *cl_from_string(char *start, char *end)
 np string_expression(void)
 /*  Gibt Zeiger auf string oder Zeichenkonstante zurueck  */
 {
-  np new; char f,*s,*p;int flag,val;zmax zm;
+  np new; char f,*s,*p;int flag,val;
+  zmax zm;zumax zum;
   static char *string;
   static size_t slen;
   p=string;
@@ -701,17 +702,17 @@ np string_expression(void)
       }
       if(*s=='\\'){
 	s++;
-	if(*s=='\\'){*p++='\\';s++;continue;}
-	if(*s=='n'){*p++='\n';s++;continue;}
-	if(*s=='t'){*p++='\t';s++;continue;}
-	if(*s=='r'){*p++='\r';s++;continue;}
-	if(*s=='v'){*p++='\v';s++;continue;}
-	if(*s=='b'){*p++='\b';s++;continue;}
-	if(*s=='f'){*p++='\f';s++;continue;}
-	if(*s=='a'){*p++='\a';s++;continue;}
-	if(*s=='\?'){*p++='\?';s++;continue;}
-	if(*s=='\''){*p++='\'';s++;continue;}
-	if(*s=='\"'){*p++='\"';s++;continue;}
+	if(*s=='\\'){*p++=CHARCONV('\\');s++;continue;}
+	if(*s=='n'){*p++=CHARCONV('\n');s++;continue;}
+	if(*s=='t'){*p++=CHARCONV('\t');s++;continue;}
+	if(*s=='r'){*p++=CHARCONV('\r');s++;continue;}
+	if(*s=='v'){*p++=CHARCONV('\v');s++;continue;}
+	if(*s=='b'){*p++=CHARCONV('\b');s++;continue;}
+	if(*s=='f'){*p++=CHARCONV('\f');s++;continue;}
+	if(*s=='a'){*p++=CHARCONV('\a');s++;continue;}
+	if(*s=='\?'){*p++=CHARCONV('\?');s++;continue;}
+	if(*s=='\''){*p++=CHARCONV('\'');s++;continue;}
+	if(*s=='\"'){*p++=CHARCONV('\"');s++;continue;}
 	flag=val=0;
 	while(*s>='0'&&*s<='7'&&flag<3){
 	  val=val*8+*s-'0';
@@ -739,7 +740,8 @@ np string_expression(void)
 /* removed */
 #endif
       }
-      *p++=*s++;
+      *p++=CHARCONV(*s);
+      s++;
     }
     if(*s!=f) error(74);
     next_token();
@@ -771,7 +773,7 @@ np string_expression(void)
     new->ntyp->next=0;
     new->flags=CEXPR;
 		/* TODO: Hier eventuell was mitspeichern das char */
-    zm=l2zm(0L);
+    zm=l2zm(0L);zum=ul2zum(0UL);
     p--;
     if(p>string){ error(72);
 #ifdef HAVE_MISRA
@@ -780,9 +782,15 @@ np string_expression(void)
 	} 
     for(BIGENDIAN?(l=string):(l=p);BIGENDIAN?(l<=p):(l>=string);BIGENDIAN?(l++):(l--)){
       /*  zm=zm<<CHAR_BIT+*p  */
-      zm=zmlshift(zm,char_bit);
-      zm=zmadd(zm,l2zm((long)*l));
-      new->val.vint=zm2zi(zm);
+      if(default_unsigned){
+	zum=zumlshift(zum,char_bit);
+	zum=zmadd(zum,ul2zum(*(unsigned char *)l));
+	new->val.vint=zm2zi(zum2zm(zum));
+      }else{
+	zm=zmlshift(zm,char_bit);
+	zm=zmadd(zm,l2zm((long)*l));
+	new->val.vint=zm2zi(zm);
+      }
     }
   }
   new->left=new->right=0;
