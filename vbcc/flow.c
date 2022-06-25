@@ -1,4 +1,4 @@
-/*  $VER: vbcc (flow.c) $Revision: 1.8 $    */
+/*  $VER: vbcc (flow.c) $Revision: 1.12 $    */
 /*  Generierung des FLussgraphs und Optimierungen des Kontrollflusses   */
 
 #include "opt.h"
@@ -86,6 +86,10 @@ flowgraph *construct_flowgraph(void)
       firstl=lastlabel;
       lcnt=label-firstl;
     }
+    return_label=0;
+    if(last_ic&&last_ic->code==LABEL) return_label=last_ic->typf;
+    if(last_ic&&last_ic->code==SETRETURN&&last_ic->prev&&last_ic->prev->code==LABEL) return_label=last_ic->prev->typf;
+
     iseq=mymalloc(lcnt*sizeof(int));
     used=mymalloc(lcnt*sizeof(int));
     lg=mymalloc(lcnt*sizeof(flowgraph *));
@@ -309,6 +313,7 @@ void print_flowgraph(flowgraph *g)
         }
         g=g->normalout;
     }
+    printf("return_label=%d\n",return_label);
 }
 void free_flowgraph(flowgraph *g)
 /*  Gibt Flussgraph frei    */
@@ -446,7 +451,7 @@ flowgraph *jump_optimization(void)
                     if(l2){ lp->graph=0;continue;}
                     np=ng->end;
                     if(!np){ i=-1;break;}
-                    if(ng->branchout&&np->code!=BRA){i=-1;break;}
+                    if(ng->branchout&&(np->code!=BRA||ng->branchout!=g)){i=-1;break;}
                     if(np->code==BRA) np=np->prev;
                     if(!np){ i=-1;break;}
                     if(!p){

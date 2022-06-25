@@ -1,6 +1,6 @@
 
 # used to create vbcc, vc and ucpp
-CC = gcc -std=c9x -g -DHAVE_AOS4 #-DHAVE_ECPP -DHAVE_MISRA
+CC = gcc -std=c9x -g -DHAVE_AOS4 #-fsanitize=address #-DHAVE_ECPP -DHAVE_MISRA 
 LDFLAGS = -lm
 
 # native version; used to create dtgen
@@ -29,8 +29,8 @@ doc/vbcc.html:
 vcppobjs = vcpp/cpp.o vcpp/eval.o vcpp/getopt.o vcpp/hideset.o vcpp/include.o \
 	   vcpp/lex.o vcpp/macro.o vcpp/nlist.o vcpp/tokens.o vcpp/unix.o
 
-vbcc.tar.gz:
-	(cd ..;tar zcvf vbcc.tar.gz vbcc/Makefile vbcc/*.[ch] vbcc/datatypes/*.[ch] vbcc/doc/*.texi vbcc/frontend/vc.c vbcc/machines/*/machine.[ch] vbcc/machines/*/machine.dt vbcc/machines/*/schedule.[ch] vbcc/ucpp/*.[ch] vbcc/ucpp/README vbcc/vprof/vprof.c vbcc/vsc/vsc.[ch])
+_vbcc.tar.gz:
+	-(cd ..;tar zcvf vbcc.tar.gz --exclude=*/dt.c --exclude=*/dt.h vbcc/Makefile vbcc/bin/.dummy vbcc/*.[ch] vbcc/datatypes/*.[ch] vbcc/doc/*.texi vbcc/frontend/vc.c vbcc/machines/*/*.[ch] vbcc/machines/*/machine.dt vbcc/machines/*/schedule.[ch] vbcc/machines/*/compress.[ch] vbcc/ucpp/*.[ch] vbcc/ucpp/README vbcc/vprof/vprof.c vbcc/vsc/vsc.[ch] vbcc/vcpr/vcpr.[ch])
 
 bin/osekrm: osekrm.c
 	$(CC) osekrm.c -o bin/osekrm
@@ -58,7 +58,7 @@ dist: bin/osekrm
 	bin/osekrm <t9 >statements.c
 	bin/osekrm <t10 >rd.c
 	bin/osekrm <t11 >type_expr.c
-	make vbcc.tar.gz
+	make _vbcc.tar.gz
 	mv t1 supp.h
 	mv t2 supp.c
 	mv t3 main.c
@@ -119,7 +119,7 @@ bobjects = $(TRGDIR)/main.o $(TRGDIR)/vars.o $(TRGDIR)/declaration.o \
 
 fobjects = $(TRGDIR)/opt.o $(TRGDIR)/av.o $(TRGDIR)/rd.o $(TRGDIR)/regs.o \
 	   $(TRGDIR)/flow.o $(TRGDIR)/cse.o $(TRGDIR)/cp.o $(TRGDIR)/loop.o \
-	   $(TRGDIR)/alias.o $(bobjects)
+	   $(TRGDIR)/alias.o $(TRGDIR)/range.o $(bobjects)
 
 sobjects = $(TRGDIR)/opts.o $(TRGDIR)/regss.o $(bobjects)
 
@@ -140,6 +140,8 @@ minicomp	 = $(TRGDIR)/supp.o $(TRGDIR)/minicompg.tab.o $(TRGDIR)/minicomp.o $(TR
 
 vscobjects = $(TRGDIR)/vsc.o $(TRGDIR)/schedule.o
 
+vcprobjects = $(TRGDIR)/vcpr.o $(TRGDIR)/compress.o
+
 bin/vbcc$(TARGET): $(fobjects)
 	$(CC) $(LDFLAGS) $(fobjects) -o bin/vbcc$(TARGET)
 
@@ -148,6 +150,9 @@ bin/vbccs$(TARGET): $(sobjects)
 
 bin/vsc$(TARGET): $(vscobjects)
 	$(CC) $(LDFLAGS) $(vscobjects) -o bin/vsc$(TARGET)
+
+bin/vcpr$(TARGET): $(vcprobjects)
+	$(CC) $(LDFLAGS) $(vcprobjects) -o bin/vcpr$(TARGET)
 
 bin/tasm$(TARGET): $(tasm)
 	$(CC) $(LDFLAGS) $(tasm) -o bin/tasm$(TARGET)
@@ -234,6 +239,9 @@ $(TRGDIR)/loop.o: loop.c opt.h supp.h $(TRGDIR)/machine.h $(TRGDIR)/dt.h
 $(TRGDIR)/alias.o: alias.c opt.h supp.h $(TRGDIR)/machine.h $(TRGDIR)/dt.h
 	$(CC) -c alias.c -o $(TRGDIR)/alias.o -I$(TRGDIR)
 
+$(TRGDIR)/range.o: range.c opt.h supp.h $(TRGDIR)/machine.h $(TRGDIR)/dt.h
+	$(CC) -c range.c -o $(TRGDIR)/range.o -I$(TRGDIR)
+
 $(TRGDIR)/preproc.o: preproc.c vbpp.h supp.h vbc.h $(TRGDIR)/dt.h
 	$(CC) -c preproc.c -o $(TRGDIR)/preproc.o -I$(TRGDIR)
 
@@ -272,6 +280,13 @@ $(TRGDIR)/vsc.o: vsc/vsc.h vsc/vsc.c $(TRGDIR)/schedule.h
 
 $(TRGDIR)/schedule.o: vsc/vsc.h $(TRGDIR)/schedule.h $(TRGDIR)/schedule.c
 	$(CC) -c $(TRGDIR)/schedule.c -o $(TRGDIR)/schedule.o -I$(TRGDIR) -Ivsc
+
+$(TRGDIR)/vcpr.o: vcpr/vcpr.h vcpr/vcpr.c
+	$(CC) -c vcpr/vcpr.c -o $(TRGDIR)/vcpr.o -I$(TRGDIR)
+
+$(TRGDIR)/compress.o: vcpr/vcpr.h $(TRGDIR)/compress.c
+	$(CC) -c $(TRGDIR)/compress.c -o $(TRGDIR)/compress.o -I$(TRGDIR) -Ivcpr
+
 
 
 # Graph coloring register allocator by Alex
