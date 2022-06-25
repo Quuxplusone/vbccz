@@ -1,4 +1,4 @@
-/*  $VER: vbcc (loop.c) $Revision: 1.18 $    */
+/*  $VER: vbcc (loop.c) $Revision: 1.19 $    */
 /*  schleifenorientierte Optimierungen  */
 
 #include "opt.h"
@@ -952,6 +952,7 @@ int do_sr(int donothing)
 	}
 	/*  Berechnen der Schrittweite fuer Hilfsvariable   */
 	if(c==MULT||c==LSHIFT){
+	  int styp;
 	  t2=new_typ();
 	  t2->flags=iv_ic->typf;
 	  nstep=add_tmp_var(t2);
@@ -963,13 +964,18 @@ int do_sr(int donothing)
 	  new->z.flags=VAR;
 	  new->z.v=nstep;
 	  new->z.val.vmax=l2zm(0L);
-	  if(!compare_objs(&m->q1,&iv_ic->z,iv_ic->typf)) new->q1=m->q2;
-	  else new->q1=m->q1;
+	  if(!compare_objs(&m->q1,&iv_ic->z,iv_ic->typf)){
+	    new->q1=m->q2;
+	    styp=q2typ(m);
+	  }else{
+	    new->q1=m->q1;
+	    styp=m->typf;
+	  }
 	  if(!compare_objs(&iv_ic->q1,&iv_ic->z,iv_ic->typf)) new->q2=iv_ic->q2;
 	  else new->q2=iv_ic->q1;
 	  if(c==LSHIFT){
 	    if((new->q1.flags&(KONST|DREFOBJ))!=KONST) ierror(0);
-	    eval_const(&new->q1.val,new->typf);
+	    eval_const(&new->q1.val,styp);
 	    gval.vmax=zmlshift(Z1,vmax);
 	    eval_const(&gval,MAXINT);
 	    insert_const(&new->q1.val,new->typf);
