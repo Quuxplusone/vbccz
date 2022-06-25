@@ -1,4 +1,4 @@
-/*  $VER: vbcc (m68k/machine.c) $Revision: 1.137 $     */
+/*  $VER: vbcc (m68k/machine.c) $Revision: 1.138 $     */
 /*  Code generator for Motorola 680x0 CPUs. Supports 68000-68060+68881/2    */
 /*  and ColdFire.                                                           */
 /*  vasm, PhxAss and the GNU assembler is supported.                        */
@@ -3100,7 +3100,7 @@ static char *ami_ieee(char *base,int off)
   char *s;
   if(cf) ierror(0);
   s=mymalloc(128);
-  sprintf(s,"\tmove.l\t%s,-(%s)\n\tmove.l\t%sMathIeee%sBase,%s\n\tjsr\t%d(%s)\n\tmove.l\t(%s)+,%s",mregnames[a6],mregnames[sp],idprefix,base,mregnames[a6],off,mregnames[a6],mregnames[sp],mregnames[a6]);
+  sprintf(s,"\tmove.l\t%s,-(%s)\n\tmove.l\t%sMathIeee%sBase%s,%s\n\tjsr\t%d(%s)\n\tmove.l\t(%s)+,%s",mregnames[a6],mregnames[sp],idprefix,base,use_sd?"(a4)":"",mregnames[a6],off,mregnames[a6],mregnames[sp],mregnames[a6]);
   return s;
 }
 
