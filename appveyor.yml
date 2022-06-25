@@ -1,0 +1,29 @@
+image:
+- Ubuntu
+- macos
+
+install:
+- sh: echo "${APPVEYOR_BUILD_WORKER_IMAGE}"
+- sh: >-
+    if test "${APPVEYOR_BUILD_WORKER_IMAGE}" = "Ubuntu"; then
+        sudo apt-get update -y
+        sudo apt-get install -y inform
+        pushd /tmp
+        git clone https://gitlab.com/DavidGriffith/frotz
+        cd frotz
+        make dfrotz
+        sudo cp dfrotz /usr/local/bin
+        popd
+    elif test "${APPVEYOR_BUILD_WORKER_IMAGE}" = "macOS"; then
+        brew update
+        brew install inform6 frotz
+    fi
+
+build_script:
+- git branch --set-upstream-to=origin/master master || git branch --track master origin/master
+- make vbccz
+- make diff
+
+test_script:
+- make test
+- if test "${APPVEYOR_BUILD_WORKER_IMAGE}" = "macOS"; then make coverage; appveyor PushArtifact coverage-report.txt; fi
