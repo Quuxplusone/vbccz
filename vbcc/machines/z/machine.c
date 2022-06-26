@@ -738,7 +738,7 @@ void gen_var_head(FILE* fp, struct Var* var)
 			fprintf(fp, "Array _%s ->\n",
 				var->identifier);
 			currentvar.type = EXTERN;
-			currentvar.val.identifier = strdup(var->identifier);
+			currentvar.val.identifier = mystrdup(var->identifier);
 			currentvar.offset = 0;
 			break;
 			
@@ -805,7 +805,7 @@ void gen_dc(FILE *fp, int typf, struct const_list *p)
 				{
 					case EXTERN:
 						fixup->value.type = EXTERN;
-						fixup->value.val.identifier = strdup(obj->v->identifier);
+						fixup->value.val.identifier = mystrdup(obj->v->identifier);
 						break;
 
 					case STATIC:
