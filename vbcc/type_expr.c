@@ -962,7 +962,7 @@ int type_expression2(np p,type *ttyp)
       p->ntyp->flags=CONST|INT;
     }
     p->o.v=v;
-    if (p->ntyp->flags&VOLATILE) p->sidefx=1; /* Touching a volatile may have side effects */
+    if (f==IDENTIFIER&&(p->ntyp->flags&VOLATILE)) p->sidefx=1; /* Touching a volatile may have side effects */
     return 1;
   }
 
