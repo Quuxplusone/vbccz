@@ -54,6 +54,27 @@ void cover_typed_constants()
     assert((long)vp == 123L);
 }
 
+int cover_dangerous_IC_dref_q1(int d, int b, char **f) {
+    while (d) {
+        while (d) {
+            b = **f;
+            d -= 1;
+        }
+    }
+    return b;
+}
+
+int cover_dangerous_IC_dref_z(int i) {
+    int d[2] = {0,0};
+    for ( ; ; ++i) {
+        if (i < 2) {
+            d[i] = 4;
+        } else {
+            return d[0] + d[1];
+        }
+    }
+}
+
 int main()
 {
     copy_sl_sl(0x12345678L);
@@ -62,6 +83,14 @@ int main()
     copy_ul_ul(0x12345678uL);
 
     cover_typed_constants();
+
+    assert(cover_dangerous_IC_dref_q1(0, 42, NULL) == 42);
+    char *p = (char*)"a";
+    assert(cover_dangerous_IC_dref_q1(1, 42, &p) == 'a');
+
+    assert(cover_dangerous_IC_dref_z(0) == 8);
+    assert(cover_dangerous_IC_dref_z(1) == 4);
+    assert(cover_dangerous_IC_dref_z(2) == 0);
 
     puts("SUCCESS!");
 }
