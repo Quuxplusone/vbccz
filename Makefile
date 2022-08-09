@@ -12,6 +12,7 @@ clean:
 coverage: clean
 	mkdir -p vbcc/bin
 	yes '' | TARGET=z CFLAGS='-O0 -g --coverage' make -C vbcc/
+	make -C test/ clean all CFLAGS='-O3 -safe-branches'
 	make -C test/ clean all CFLAGS='-O3 -comment-misc'
 	make -C test/ clean all CFLAGS='-O2 -trace-all -comment-ic'
 	make -C test/ clean all CFLAGS='-O1 -trace-calls'
