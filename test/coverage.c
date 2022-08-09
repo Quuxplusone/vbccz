@@ -12,6 +12,16 @@ void copy_sl_ul(sl c) { get_ul(c, 0); }
 void copy_ul_sl(ul c) { get_sl(c, 0); }
 void copy_ul_ul(ul c) { get_ul(c, 0); }
 
+char return_c() { return 1; }
+signed char return_sc() { return 1; }
+unsigned char return_uc() { return 1; }
+signed short return_ss() { return 1000; }
+unsigned short return_us() { return 1000; }
+signed int return_si() { return 1000; }
+unsigned int return_ui() { return 1000; }
+signed long return_sl() { return 12345678; }
+unsigned long return_ul() { return 12345678; }
+
 void get_sl(sl val, int radix)
 {
     char *p = 0;
@@ -81,6 +91,16 @@ int main()
     copy_sl_ul(0x12345678L);
     copy_ul_sl(0x12345678uL);
     copy_ul_ul(0x12345678uL);
+
+    assert(return_c() == 1);
+    assert(return_sc() == 1);
+    assert(return_uc() == 1);
+    assert(return_ss() == 1000);
+    assert(return_us() == 1000);
+    assert(return_si() == 1000);
+    assert(return_ui() == 1000);
+    assert(return_sl() == 12345678);
+    assert(return_ul() == 12345678);
 
     cover_typed_constants();
 
