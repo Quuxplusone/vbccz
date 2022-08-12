@@ -94,11 +94,28 @@ void test_variadics()
     assert(varb(b, 42) == 48);
 }
 
+union CSIL {
+   char c;
+   short s;
+   int i;
+   long l;
+};
+
+long csil_c() { union CSIL a[2] = {0}; a[0].l = 0x12345678; return a[0].c; }
+long csil_s() { union CSIL a[2] = {0}; a[0].l = 0x12345678; return a[0].s; }
+long csil_i() { union CSIL a[2] = {0}; a[0].l = 0x12345678; return a[0].i; }
+long csil_l() { union CSIL a[2] = {0}; a[0].l = 0x12345678; return a[0].l; }
+
 int main()
 {
     test_small_struct();
     test_large_struct();
     test_variadics();
+
+    assert(csil_c() == 0x12);
+    assert(csil_s() == 0x1234);
+    assert(csil_i() == 0x1234);
+    assert(csil_l() == 0x12345678);
 
     puts("SUCCESS!");
 }

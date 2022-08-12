@@ -104,6 +104,8 @@ static int get_scalar_byte(int f,union atyps *v,zmax n, zuchar *out)
   f&=NQ;
   if(f>=CHAR&&f<=LLONG){
     int j;
+    if ((int)sizetab[f] <= (int)zm2l(n))
+      return 0;
     eval_const(v,f);
     if(LITTLEENDIAN)
       j=zm2l(n);
