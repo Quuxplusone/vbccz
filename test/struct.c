@@ -137,12 +137,41 @@ void test_different_types()
     assert(add_l_sl(0x10203040, sl) == 0x11223344);
 }
 
+struct CSIL {
+    char c;
+    short s;
+    int i;
+    long l;
+};
+void escape(char *p) { }
+void check_csil(struct CSIL *p, char c, short s, int i, long l) {
+    assert(p->c == c);
+    assert(p->s == s);
+    assert(p->i == i);
+    assert(p->l == l);
+}
+void test_odd_parity_stack_c(struct CSIL csil) { char pad; escape(&pad); csil.c = 0x01;       check_csil(&csil, 1, 0, 0, 0); }
+void test_odd_parity_stack_s(struct CSIL csil) { char pad; escape(&pad); csil.s = 0x0102;     check_csil(&csil, 0, 0x0102, 0, 0); }
+void test_odd_parity_stack_i(struct CSIL csil) { char pad; escape(&pad); csil.i = 0x0102;     check_csil(&csil, 0, 0, 0x0102, 0); }
+void test_odd_parity_stack_l(struct CSIL csil) { char pad; escape(&pad); csil.l = 0x01020304; check_csil(&csil, 0, 0, 0, 0x01020304); }
+
+void test_odd_parity_stack()
+{
+    struct CSIL csil = {0,0,0,0};
+    test_odd_parity_stack_c(csil);
+    test_odd_parity_stack_s(csil);
+    test_odd_parity_stack_i(csil);
+    test_odd_parity_stack_l(csil);
+}
+
+
 int main()
 {
     test_small_struct();
     test_large_struct();
     test_variadics();
     test_different_types();
+    test_odd_parity_stack();
 
     puts("SUCCESS!");
 }
