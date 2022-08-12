@@ -767,7 +767,7 @@ int type_expression2(np p,type *ttyp)
     else
       v=find_var(p->identifier,0);
     }
-    if(v==0){error(82,p->identifier);return(0);}
+    if(v==0||v->storage_class==TYPEDEF){error(82,p->identifier);return(0);}
     if(disallow_statics&&v->storage_class==STATIC&&v->nesting==0&&*v->identifier){
       error(302,v->identifier);
       return 0;
