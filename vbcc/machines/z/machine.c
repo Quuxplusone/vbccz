@@ -925,8 +925,14 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 		
 	/* Dereference? */
 
-	if (flags & DREFOBJ)
-		goto dereference;
+	if (flags & DREFOBJ) {
+		obj->flags &= ~DREFOBJ;
+		read_reg(fp, obj, POINTER, 0);
+		fprintf(fp, "\t@store%c sp 0 %s;\n",
+			((typf & NQ) == CHAR) ? 'b' : 'w',
+			regnames[reg]);
+		return;
+	}
 
 	/* Register? */
 
@@ -934,24 +940,13 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 	    ((flags & VAR) && (flags & REG) && (obj->v->storage_class == AUTO)) ||
 	    ((flags & VAR) && (flags & REG) && (obj->v->storage_class == REGISTER)))
 	{
-		if (flags & DREFOBJ)
-			fprintf(fp, "\t@store%c %s 0 %s;\n",
-				((typf & NQ) == CHAR) ? 'b' : 'w',
-				regnames[obj->reg], regnames[reg]);
-		else
-		{
-			struct zop in;
-			struct zop out;
-			in.type = ZOP_REG;
-			in.val.reg = reg;
-			out.type = ZOP_REG;
-			out.val.reg = obj->reg;
-			emit_add(fp, &in, &zop_zero, &out);
-		}
-#if 0
-			fprintf(fp, "\t@add %s 0 -> %s;\n",
-				regnames[reg], regnames[obj->reg]);
-#endif
+		struct zop in;
+		struct zop out;
+		in.type = ZOP_REG;
+		in.val.reg = reg;
+		out.type = ZOP_REG;
+		out.val.reg = obj->reg;
+		emit_add(fp, &in, &zop_zero, &out);
 		return;
 	}
 
@@ -1044,18 +1039,6 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 	}
 
 	ierror(0); // Not reached
-dereference:
-	/* These are a *pain*.
-	 *
-	 * The first thing we need to do is to read the old contents of the
-	 * memory cell, to work out the address we need to write to; and then
-	 * do the write. Hurray for the Z-machine stack. */
-
-	obj->flags &= ~DREFOBJ;
-	read_reg(fp, obj, POINTER, 0);
-	fprintf(fp, "\t@store%c sp 0 %s;\n",
-		((typf & NQ) == CHAR) ? 'b' : 'w',
-		regnames[reg]);
 }
 
 /* Move one register to another register. */
