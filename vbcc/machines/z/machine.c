@@ -689,19 +689,6 @@ int must_convert(int otyp, int typ,int const_expr)
 	if (oldtype == newtype)
 		return 0;
 
-#if 0
-	/* Converting two basic integers? */
-
-	if ((oldtype <= INT) && (newtype <= INT))
-	{
-		/* ... but char to short needs an AND. */
-
-		if ((oldtype == CHAR) && (newtype != CHAR))
-			return 1;
-		return 0;
-	}
-#endif
-
 	/* Pointer to/from int? */
 
 	if (((oldtype == INT) || (oldtype == POINTER)) &&
@@ -1012,27 +999,6 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 				}
 			}
 			return;
-#if 0
-		case EXTERN: /* External linkage */
-			if ((typf & NQ) == CHAR)
-				fprintf(fp, "\t@storeb _%s (%ld) %s;\n",
-					obj->v->identifier, offset, regnames[reg]);
-			else
-			{
-
-				fprintf(fp, "\t@storew _%s 0 %s;\n",
-					obj->v->identifier, regnames[reg]);
-			return;
-
-		case STATIC: /* Static global */
-			if ((typf & NQ) == CHAR)
-				fprintf(fp, "\t@storeb STATIC_%s_%ld (%ld) %s;\n",
-					modulename, obj->v->offset, offset, regnames[reg]);
-			else
-				fprintf(fp, "\t@storew STATIC_%s_%ld 0 %s;\n",
-					modulename, obj->v->offset, regnames[reg]);
-			return;
-#endif
 
 		default:
 			ierror(0);
@@ -1540,13 +1506,6 @@ static void move_value(FILE* fp, struct obj* q1o, struct obj* zo, int typf)
 	if ((q1.type != ZOP_STACK) || (z.type != ZOP_STACK))
 	{
 		emit_add(fp, &q1, &zop_zero, &z);
-#if 0
-		fprintf(fp, "\t@add ");
-		emit_zop(fp, &q1);
-		fprintf(fp, " 0 -> ");
-		emit_zop(fp, &z);
-		fprintf(fp, ";\n");
-#endif
 	}
 	fin_zop(fp, zo, typf, &z);
 }
@@ -1676,35 +1635,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 		if (code == NOP)
 			continue;
 
-		/* Has the stack been adjusted due to a call? */
-
-#if 0
-		if (stackcalladjustment)
-		{
-			if ((code != GETRETURN) &&
-			    (code != FREEREG) &&
-			    (code != ALLOCREG))
-			{
-				debugemit(fp, "! stack reset %d %d\n",
-					stackparamadjust, stackcallparamsize);
-				fprintf(fp, "\t@add xp %d -> xp;\n",
-					stackparamadjust+stackcallparamsize);
-				stackparamadjust = 0;
-				stackcallparamsize = 0;
-				stackcalladjustment = 0;
-			}
-		}
-#endif
-
-#if 0
-        if(notpopped&&!dontpop){
-            int flag=0;
-            if(c==LABEL||c==COMPARE||c==TEST||c==BRA){
-                fprintf(fp,"\tadd\t%s,#%ld\n",regnames[sp],notpopped);
-                stackoffset+=notpopped;notpopped=0;
-            }
-        }
-#endif
 		/* These opcodes turn into other opcodes. */
 
 		switch (code)
@@ -1768,15 +1698,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case VOID:
 					case ARRAY:
 						break;
-#if 0
-					copy_struct:
-						push_addrof(fp, &ic->z, typf, &z);
-						fprintf(fp, "\t@copy_table xp ");
-						emit_zop(fp, &z);
-						fprintf(fp, " %ld;\n", szof(ic->z.v->vtyp));
-						break;
-#endif
-
 					default:
 						ierror(typf & NQ);
 				}
@@ -1790,38 +1711,14 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 				switch (typf & NQ)
 				{
 					case CHAR:
-						//if (ic->q2.val.vlong != 1)
-						//	goto setreturn_copy_struct;
-
-						/* fall through */
 					case SHORT:
 					case INT:
 					case POINTER:
 						read_reg(fp, &ic->q1, typf, 2);
 						break;
-
-					case LONG:
-					case STRUCT:
-					case UNION:
-					case VOID:
-					case ARRAY:
-#if 0
-					setreturn_copy_struct:
-						fprintf(fp, "\t@add xp %ld -> sp;\n",
-							stackoffset);
-						push_addrof(fp, &ic->q1, typf, &q1);
-						fprintf(fp, "\t@copy_table ");
-						emit_zop(fp, &q1);
-						fprintf(fp, " sp %ld;\n", szof(ic->q1.v->vtyp));
-						break;
-#endif
-
 					default:
 						ierror(typf & NQ);
 				}
-				//fprintf(fp, "\tr0 = ");
-				//emit_object(fp, &ic->q1, typf);
-				//fprintf(fp, ";\n");
 				continue;
 
 			case MINUS: /* Unary minus */
@@ -2248,13 +2145,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						if ((z.type != ZOP_STACK) || (q1.type != ZOP_STACK))
 						{
 							emit_add(fp, &q1, &zop_zero, &z);
-#if 0
-							fprintf(fp, "\t@add ");
-							emit_zop(fp, &q1);
-							fprintf(fp, " 0 -> ");
-							emit_zop(fp, &z);
-							fprintf(fp, ";\n");
-#endif
 						}
 						fin_zop(fp, &ic->z, typf, &z);
 						break;
@@ -2288,13 +2178,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						if ((z.type != ZOP_STACK) || (q1.type != ZOP_STACK))
 						{
 							emit_add(fp, &q1, &zop_zero, &z);
-#if 0
-							fprintf(fp, "\t@add ");
-							emit_zop(fp, &q1);
-							fprintf(fp, " 0 -> ");
-							emit_zop(fp, &z);
-							fprintf(fp, ";\n");
-#endif
 						}
 						fin_zop(fp, &ic->z, typf, &z);
 						break;
@@ -2308,16 +2191,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						emit_zop(fp, &q1);
 						fprintf(fp, ";\n");
 						break;
-#if 0
-					case SHORT:
-					case INT:
-						fprintf(fp, "\t");
-						emit_object(fp, &ic->z, typf);
-						fprintf(fp, " = (");
-						emit_object(fp, &ic->q1, CHAR);
-						fprintf(fp, ") << 8 >> 8;\n");
-						break;
-#endif
 					
 					default:
 						printf("%X\n", typf);
@@ -2536,20 +2409,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 
 			case CALL:
 			{
-#if 0
-				/* Calculate the amount of stack to reserve for
-				 * the return parameter. ints and smaller go in
-				 * the return register. */
-
-				stackcallparamsize = szof(ic->q1.v->vtyp->next);
-				if (stackcallparamsize <= sizetab[INT])
-					stackcallparamsize = 0;
-
-				if (stackcallparamsize)
-					fprintf(fp, "\t@sub xp %d -> xp;\n",
-						stackcallparamsize);
-#endif
-
 				/* Is this actually an inline assembly function? */
 
 				if ((ic->q1.flags & VAR) &&
