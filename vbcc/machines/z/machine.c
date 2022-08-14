@@ -471,8 +471,6 @@ static void dump_obj(FILE* fp, struct obj* obj, int typf)
 		    (obj->v->storage_class == REGISTER))
 		{
 			zmax offset = obj->v->offset;
-			//if (offset < 0)
-			//	offset = -(offset+maxalign);
 			fprintf(fp, " at fp%+ld", offset);
 		}
 
@@ -957,7 +955,6 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 					c.type = ZOP_CONSTANT;
 					c.val.constant = offset;
 					emit_add(fp, &zop_xp, &c, &zop_stack);
-					//fprintf(fp, "\t@add xp (%ld) -> sp;\n", offset);
 					fprintf(fp, "\t@storew sp 0 %s;\n", regnames[reg]);
 				}
 				else
@@ -1038,7 +1035,6 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 		struct zop c;
 		struct zop r;
 		c.type = ZOP_CONSTANT;
-		//fprintf(fp, "\t@add ");
 		switch (typf & NU)
 		{
 			case CHAR:		c.val.constant = obj->val.vchar;	break;
@@ -1054,17 +1050,14 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 		r.type = ZOP_REG;
 		r.val.reg = reg;
 		emit_add(fp, &c, &zop_zero, &r);
-		//fprintf(fp, " 0 -> %s;\n", regnames[reg]);
 	}
 	else if (flags == REG) /* Register? */
 	{
 		move_reg(fp, obj->reg, reg);
-		//fprintf(fp, "\t@add %s 0 -> %s;\n", regnames[obj->reg], regnames[reg]);
 	}
 	else if ((flags & REG) && ((typf & NQ) == FUNKT)) /* Function pointer? */
 	{
 		move_reg(fp, obj->reg, reg);
-		//fprintf(fp, "\t@add %s 0 -> %s;\n", regnames[obj->reg], regnames[reg]);
 	}
 	else
 	{
@@ -1082,8 +1075,6 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 				else if (flags & REG)
 				{
 					move_reg(fp, obj->reg, reg);
-					//fprintf(fp, "\t@add %s 0 -> %s;\n",
-					//	regnames[obj->reg], regnames[reg]);
 				}
 				else
 				{
@@ -1618,15 +1609,12 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 
 	if (stackframe)
 		fprintf(fp, "\t@sub xp (%ld) -> xp;\n", stackframe);
-	//if (stackoffset)
-	//	fprintf(fp, "\txp = xp - %ld\n", stackframe);
-
     
     	/* Iterate through all ICs. */
 
 	for (; dump_ic(fp, ic), ic; ic=ic->next)
 	{
-        c=ic->code;t=ic->typf;
+	        c=ic->code;t=ic->typf;
 		code = ic->code;
 		typf = ic->typf;
 
@@ -1675,9 +1663,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 				switch (typf & NQ)
 				{
 					case CHAR:
-						//if (ic->q2.val.vlong != 1)
-						//	goto copy_struct;
-						/* fall through */
 					case SHORT:
 					case INT:
 					case POINTER:
@@ -1701,10 +1686,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					default:
 						ierror(typf & NQ);
 				}
-				//fprintf(fp, "\tr0 = ");
-				//emit_object(fp, &ic->q1, typf);
-				//fprintf(fp, ";\n");
-				//write_reg(fp, &ic->z, typf, 2);
 				continue;
 
 			case SETRETURN: /* Set this function's return parameter */
@@ -1853,7 +1834,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 			case PUSH: /* Push a value onto the stack */
 				fprintf(fp, "\t@sub xp (%d) -> xp;\n",
 					ic->q2.val.vlong);
-				//stackoffset += ic->q2.val.vlong;
 				stackparamadjust += ic->q2.val.vlong;
 
 				if ((typf & NQ) == STRUCT || (typf & NQ) == UNION)
@@ -1914,10 +1894,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 
 						push_value(fp, &ic->q1, typf, &q1);
 						pop_value(fp, &ic->z, typf, &z);
-						//fprintf(fp, "\t");
-						//emit_object(fp, &ic->z, typf);
-						//fprintf(fp, " = ");
-						//emit_object(fp, &ic->q1, typf);
 						switch (code)
 						{
 							case ADD:
@@ -1977,7 +1953,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						emit_zop(fp, &z);
 						fprintf(fp, ";\n");
 						fin_zop(fp, &ic->z, typf, &z);
-						//emit_object(fp, &ic->q2, typf);
 						break;
 
 					case LONG:
@@ -2429,8 +2404,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					fprintf(fp, " xp r0 r1 r2 r3 r4 r5 -> r0;\n");
 				}
 
-				//stackcalladjustment = 1;
-
 				/* If any parameters have been pushed, adjust
 				 * the stack to pop them. */
 
@@ -2451,13 +2424,8 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 	/* We really ought to tidy the stack up; but there's no need, because
 	 * the old value of xp will be restored when the function exits. */
 
-    	//if (stackframe)
-	//	fprintf(fp, "\t@add xp %ld -> xp;\n", stackframe);
-	
 	fprintf(fp, "\t@ret r0;\n");
 	fprintf(fp, "]\n");
-
-//    function_bottom(fp, func, loff);
 }
 
 int shortcut(int code, int typ)
