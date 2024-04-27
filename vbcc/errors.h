@@ -370,3 +370,5 @@
 "shift count too large for data type",WARNING,
 "redeclaration of function argument with different register",WARNING,
 "declaration expected",WARNING|ANSIV,
+"possible redeclaration of var <%s> with different attributes <%s> and <%s>",WARNING, /* 370 */
+"redeclaration of var <%s> with new attribute <%s>",WARNING,

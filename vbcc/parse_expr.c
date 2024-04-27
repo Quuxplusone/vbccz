@@ -1,4 +1,4 @@
-/*  $VER: vbcc (parse_expr.c) $Revision: 1.21 $  */
+/*  $VER: vbcc (parse_expr.c) $Revision: 1.22 $  */
 
 #include "vbcc_cpp.h"
 #include "vbc.h"
@@ -1005,6 +1005,11 @@ np identifier_expression(void)
     new->flags=IDENTIFIER;
     new->left=new->right=0;
     new->identifier=add_identifier(ctok->name,strlen(ctok->name));
+    if(!strncmp(ctok->name,"__maskm_",8)){
+      unsigned long mask;
+      if(sscanf(ctok->name,"__maskm_%lu_%s",&mask,new->identifier)!=2) ierror(0);
+      sprintf(new->identifier+strlen(new->identifier),".%lu",mask);
+    }
     new->ntyp=0;
     new->sidefx=0;
     new->val.vmax=l2zm(0L);

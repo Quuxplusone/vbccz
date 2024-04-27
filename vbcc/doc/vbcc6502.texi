@@ -7,8 +7,23 @@ This backend provides the following additional options:
 
 @table @option
 
+    @item -c02
     @item -65c02
               Generate code using 65C02 extensions.
+
+    @item -ce02
+              Generate code using CSG 65CE02/4510 extensions.
+
+    @item -mega65
+              Generate code using the MEGA65 extensions.           
+
+    @item -m65io
+              When using the MEGA65 multiplier/divider, assume that the IO area
+              is directly accessible to generate smaller and faster code.
+
+    @item -div-bug
+              Do not generate code using the MEGA65 divider as this is buggy in
+              early versions.
 
     @item -std-syntax
               Generate code for the std syntax module of vasm rather than
@@ -49,10 +64,6 @@ This backend provides the following additional options:
     @item -common-banknr=<n>
               Specify the bank number of the common bank. See chapter on banking. The
               default number is 0.
-
-    @item -mainargs
-              Call a library function in @code{main()} if command line arguments
-              are used.
 
     @item -large
               Use large memory model. All pointers will be far pointers. A corresponding

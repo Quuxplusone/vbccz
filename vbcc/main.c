@@ -1,4 +1,4 @@
-/*  $VER: vbcc (main.c) $Revision: 1.66 $    */
+/*  $VER: vbcc (main.c) $Revision: 1.67 $    */
 #include "vbcc_cpp.h"
 #include "vbc.h"
 #include "opt.h"
@@ -666,6 +666,7 @@ int main(int argc,char *argv[])
   if(c_flags[65]&USEDFLAG) {sec_per_obj=1;}
   if(c_flags[66]&USEDFLAG) {no_eff_ics=1;}
   if(c_flags[67]&USEDFLAG) {early_eff_ics=1;}
+  if(c_flags[68]&USEDFLAG) {mask_opt=1;}
 
 
   if(!(optflags&2)){

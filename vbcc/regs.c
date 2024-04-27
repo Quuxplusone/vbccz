@@ -1,4 +1,4 @@
-/*  $VER: vbcc (regs.c) $Revision: 1.25 $   */
+/*  $VER: vbcc (regs.c) $Revision: 1.31 $   */
 /*  Registerzuteilung           */
 
 #include "opt.h"
@@ -475,6 +475,7 @@ void do_loop_regs(flowgraph *start,flowgraph *end,int intask)
       lend=g->loopend;
       if(lend&&iterations==1&&!optsize) iterations=4;
     }
+
     /*  Wenn das Register in dem Block benutzt wird, muss man es retten */
     for(r=1;r<=MAXR;r++){
       if(BTST(g->regused,r)||(reg_pair(r,&rp)&&(BTST(g->regused,rp.r1)||BTST(g->regused,rp.r2)))){
@@ -597,8 +598,8 @@ void do_loop_regs(flowgraph *start,flowgraph *end,int intask)
     }else{
       int one=0;
       for(r=1;r<=MAXR;r++){
-	/*  Falls Variable in best. Register muss.  */
-	if(r==abs(v->reg)&&!(v->flags&REGPARM)) savings[i][r]=INT_MAX;
+	/*  Variables should have been put to argument registers by local_regs()  */
+	/*if(r==abs(v->reg)&&!(v->flags&REGPARM)) savings[i][r]=INT_MAX;*/
 	if(regsa[r]||!regok(r,t,-1)) savings[i][r]=INT_MIN;
 	if(savings[i][r]>m){
 	  m=savings[i][r];
@@ -1256,6 +1257,7 @@ int find_best_local_reg(IC *fp,Var *v,int preferred)
 {
   int r,used,tmp,savings[MAXR+1]={0};
   IC *p=fp;
+
   if(v->reg&&!*v->identifier)
     return abs(v->reg);
   if(v->vtyp->flags&VOLATILE)
@@ -1394,12 +1396,117 @@ int find_best_local_reg(IC *fp,Var *v,int preferred)
   }
   return r;
 }
+
+static bvtype *late_changes;
+
+void search_late_opt(flowgraph *fg,IC *n,obj *o)
+{
+  Var *v=o->v;
+  IC *p=n->prev,*cp;
+  if(!zmeqto(o->val.vmax,Z0)) return;
+  if(o->v->reg!=0) return;
+  while(1){
+    if(!p) ierror(0);
+    if(p->code==LABEL) ierror(0);
+    if((p->q1.flags&VAR)&&p->q1.v==v) return;
+    if((p->q2.flags&VAR)&&p->q2.v==v) return;
+    if((p->z.flags&VAR)&&p->z.v==v){
+      if(p->z.flags&DREFOBJ) return;
+      if(p->code==CONVERT&&!must_convert(p->typf,p->typf2,0)){
+	int ucnt=0;
+	if((p->q1.flags&DREFOBJ)&&(o->flags&DREFOBJ)) return;
+	if(p->q1.flags&VARADR) return;
+	if((n->q1.flags&VAR)&&n->q1.v==o->v) ucnt++;
+	if((n->q2.flags&VAR)&&n->q2.v==o->v) ucnt++;
+	if((n->z.flags&(VAR|DREFOBJ))==(VAR|DREFOBJ)&&n->q1.v==o->v) ucnt++;
+	if(ucnt!=1) return;
+	memset(late_changes,vsize,0);
+	if((p->q1.flags&(VAR|VARADR))==VAR){
+	  int i=p->q1.v->index;
+	  if(p->q1.flags&DREFOBJ) i+=vcount-rcount;
+	  for(cp=p;cp&&cp!=n;cp=cp->next){
+	    ic_changes(cp,late_changes);
+	    if(BTST(late_changes,i)) return;
+	  }
+	}
+	if(DEBUG&1024){printf("removing CONVERT (!must_convert)\n");pric2(stdout,p);pric2(stdout,n);}
+	o->v=p->q1.v;
+	o->val.vmax=p->q1.val.vmax;
+	if(p->q1.flags&DREFOBJ){
+	  o->flags|=DREFOBJ;
+	  o->dtyp=p->q1.dtyp;
+	}
+	n->use_list=myrealloc(n->use_list,VLS*(n->use_cnt+p->use_cnt));
+	memcpy(&n->use_list[n->use_cnt],&p->use_list[0],p->use_cnt*VLS);
+	n->use_cnt+=p->use_cnt;
+	remove_IC_fg(fg,p);
+      }
+#if 0/* BIGENDIAN||LITTLEENDIAN*/
+      if(p->code==CONVERT&&ISINT(p->typf)&&ISINT(p->typf2)&&(p->typf&NQ)<=(p->typf2&NQ)){
+	if((p->q1.flags&DREFOBJ)&&(o->flags&DREFOBJ)) return;
+	if(DEBUG&1024){printf("removing CONVERT (int=>smallint)\n");pric2(stdout,p);pric2(stdout,n);}
+	o->v=p->q1.v;
+	o->val.vmax=p->q1.val.vmax;
+	if(p->q1.flags&DREFOBJ){
+	  o->flags|=DREFOBJ;
+	  o->dtyp=p->q1.dtyp;
+	}
+#if BIGENDIAN
+	o->val.vmax=zmadd(o->val.vmax,zmsub(sizetab[p->typf2&NQ],sizetab[p->typf&NQ]));
+#endif
+	remove_IC_fg(fg,p);
+      }
+#endif
+      return;
+    }
+    if(p==fg->start) {pric2(stdout,n);ierror(0);}
+    p=p->prev;
+  }
+}
+
+
+void late_opt(flowgraph *fg)
+{
+  IC *p;int j;bvtype *isused;
+  isused=mymalloc(vsize);
+  late_changes=mymalloc(vsize);
+  while(fg){
+    if(DEBUG&1024) printf("late opt pass block %d\n",fg->index);
+    memcpy(isused,fg->av_out,vsize);
+    for(p=fg->end;p;p=p->prev){
+      if(p->code!=NOP&&p->code!=ADDRESS&&(p->q1.flags&(VAR|VARADR))==VAR){
+	j=p->q1.v->index;
+	if(BTST(fg->av_kill,j)&&!BTST(fg->av_out,j)&&!BTST(isused,j))
+	  search_late_opt(fg,p,&p->q1);
+      }
+      if(p->code!=NOP&&(p->q2.flags&(VAR|VARADR))==VAR){
+	j=p->q2.v->index;
+	if(BTST(fg->av_kill,j)&&!BTST(fg->av_out,j)&&!BTST(isused,j))
+	  search_late_opt(fg,p,&p->q2);
+      }
+      if((p->z.flags&(VAR|DREFOBJ))==(VAR|DREFOBJ)){
+	j=p->z.v->index;
+	if(BTST(fg->av_kill,j)&&!BTST(fg->av_out,j)&&!BTST(isused,j))
+	  search_late_opt(fg,p,&p->z);
+      }
+      if(p==fg->start) break;
+      if(p->change_cnt||p->use_cnt)
+	av_update(p,isused);
+    }
+    fg=fg->normalout;
+  }
+  free(isused);
+  free(late_changes);
+}
+
 void local_regs(flowgraph *fg)
 /*  versucht Variablen, die nur innerhalb eines Basic Blocks benutzt    */
 /*  werden (kill==true und out==false), Register zuzuweisen.            */
 {
   IC *p;
   int i,j,t,r,nr,mustalloc,savings,prio,nr1,nr2;
+  late_opt(fg);
+  if(DEBUG&1024) print_flowgraph(fg);
   bvtype *inmem=mymalloc(vsize);
   if(DEBUG&9216) printf("assigning temporary variables to registers\n");
   memset(inmem,0,vsize);
@@ -1447,6 +1554,28 @@ void local_regs(flowgraph *fg)
 	if(replace_local_reg(&p->q1)==nr) mustalloc=0;
 	if(replace_local_reg(&p->q2)==nr) mustalloc=0;
       }
+      if((p->q1.flags&(VAR|REG|VARADR))==VAR&&!(p->q1.v->flags&USEDASADR)&&(!(p->q1.v->vtyp->flags&VOLATILE)||p->q1.v->reg)&&(p->q1.v->storage_class==AUTO||p->q1.v->storage_class==REGISTER)){
+	j=p->q1.v->index;
+	if((BTST(lfg->av_kill,j)||is_header)&&!BTST(lfg->av_out,j)&&!BTST(inmem,j)){
+	  r=find_best_local_reg(p,p->q1.v,nr);
+	  if(r){
+	    if(r!=nr) 
+	      insert_allocreg(lfg,p,FREEREG,r);
+	    else
+	      mustalloc=0;
+	    lregv[r]=p->q1.v;regused[r]=regu[r]=1;
+	    if(reg_pair(r,&rp)){
+	      regu[rp.r1]=regu[rp.r2]=1;
+	      regused[rp.r1]=regused[rp.r2]=1;
+	    }
+	    if(replace_local_reg(&p->q1)!=r) ierror(0);
+	    replace_local_reg(&p->q2);
+	    replace_local_reg(&p->z);
+	    if((DEBUG&9216)&&*p->q1.v->identifier) printf("temporary <%s> assigned to %s (v3)\n",p->q1.v->identifier,regnames[r]);
+	    if(DEBUG&8192) printf("temporary <%s>(%p) assigned to %s (v3)\n",p->q1.v->identifier,(void *)p->q1.v,regnames[r]);
+	  }else BSET(inmem,j);
+	}
+      }
       /*  hier wegen USEQ2ASZ aufpassen; kommutative ICs sollten so   */
       /*  angeordnet werden, dass ein evtl. Register rechts steht     */
       if((p->q2.flags&(VAR|REG|VARADR))==VAR&&!(p->q2.v->flags&USEDASADR)&&!(p->q2.v->vtyp->flags&VOLATILE)&&(p->q2.v->storage_class==AUTO||p->q2.v->storage_class==REGISTER)){
@@ -1462,7 +1591,6 @@ void local_regs(flowgraph *fg)
 	      regused[rp.r1]=regused[rp.r2]=1;
 	    }
 	    if(replace_local_reg(&p->q2)!=r) ierror(0);
-	    replace_local_reg(&p->q1);
 	    replace_local_reg(&p->z);
 	    if((DEBUG&9216)&&*p->q2.v->identifier) printf("temporary <%s> assigned to %s (v1)\n",p->q2.v->identifier,regnames[r]);
 	    if(DEBUG&8192) printf("temporary <%s>(%p) assigned to %s (v1)\n",p->q2.v->identifier,(void *)p->q2.v,regnames[r]);
@@ -1483,29 +1611,8 @@ void local_regs(flowgraph *fg)
 	    if(replace_local_reg(&p->z)!=r){
 	      for(i=1;i<=MAXR;i++) if(lregv[i]) printf("%d:%s=%s(%p)\n",i,regnames[i],lregv[i]->identifier,(void*)lregv[i]);
 	      ierror(r);}
-	    replace_local_reg(&p->q1);
 	    if((DEBUG&9216)&&*p->z.v->identifier) printf("temporary <%s> assigned to %s (v2)\n",p->z.v->identifier,regnames[r]);
 	    if(DEBUG&8192) printf("temporary <%s>(%p) assigned to %s (v2)\n",p->z.v->identifier,(void *)p->z.v,regnames[r]);
-	  }else BSET(inmem,j);
-	}
-      }
-      if((p->q1.flags&(VAR|REG|VARADR))==VAR&&!(p->q1.v->flags&USEDASADR)&&(!(p->q1.v->vtyp->flags&VOLATILE)||p->q1.v->reg)&&(p->q1.v->storage_class==AUTO||p->q1.v->storage_class==REGISTER)){
-	j=p->q1.v->index;
-	if((BTST(lfg->av_kill,j)||is_header)&&!BTST(lfg->av_out,j)&&!BTST(inmem,j)){
-	  r=find_best_local_reg(p,p->q1.v,nr);
-	  if(r){
-	    if(r!=nr) 
-	      insert_allocreg(lfg,p,FREEREG,r);
-	    else
-	      mustalloc=0;
-	    lregv[r]=p->q1.v;regused[r]=regu[r]=1;
-	    if(reg_pair(r,&rp)){
-	      regu[rp.r1]=regu[rp.r2]=1;
-	      regused[rp.r1]=regused[rp.r2]=1;
-	    }
-	    if(replace_local_reg(&p->q1)!=r) ierror(0);
-	    if((DEBUG&9216)&&*p->q1.v->identifier) printf("temporary <%s> assigned to %s (v3)\n",p->q1.v->identifier,regnames[r]);
-	    if(DEBUG&8192) printf("temporary <%s>(%p) assigned to %s (v3)\n",p->q1.v->identifier,(void *)p->q1.v,regnames[r]);
 	  }else BSET(inmem,j);
 	}
       }

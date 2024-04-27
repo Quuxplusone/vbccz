@@ -1,4 +1,4 @@
-/*  $VER: vbcc (supp.c) $Revision: 1.47 $     */
+/*  $VER: vbcc (supp.c) $Revision: 1.49 $     */
 
 #include "supp.h"
 #include "opt.h"
@@ -90,6 +90,7 @@ int misracheck,misraversion,misracomma,misratok;
 int pack_align;
 int short_push;
 int default_unsigned;
+Var *add_attr_haddecl;
 
 char *emit_buffer[EMIT_BUF_DEPTH];
 char *emit_p;
@@ -1719,6 +1720,8 @@ void add_attr(char **attr,char *new)
 {
   int ln,lo;
   if(!new) return;
+  if(*attr&&strstr(*attr,new)) return;
+  if(add_attr_haddecl&&(!*attr||!strstr(*attr,new))) error(371,add_attr_haddecl->identifier,new);
   ln=strlen(new);
   if(*attr){
     lo=strlen(*attr);

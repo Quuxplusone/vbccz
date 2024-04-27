@@ -1,7 +1,7 @@
-/*  $VER: vbcc (vars.c) $Revision: 1.40 $   */
+/*  $VER: vbcc (vars.c) $Revision: 1.41 $   */
 #include "vbc.h"
 #ifdef AMIGA
-static const char *__ver="$VER: vbcc 0.9h (12.02.2022)\r\n";
+static const char *__ver="$VER: vbcc 0.9i_pre (xx.yy.2022)\r\n";
 long __stack=65536;
 #endif
 char *s,*ident;
@@ -24,6 +24,7 @@ int force_statics,prefer_statics;
 int range_opt;
 int merge_strings;
 int sec_per_obj;
+int mask_opt;
 int opencl;
 int disallow_statics;
 int header_cnt;
@@ -54,7 +55,8 @@ int c_flags[MAXCF]={
     0,0,0,VALFLAG,
     0,
     VALFLAG,VALFLAG,VALFLAG,VALFLAG,
-    STRINGFLAG
+    STRINGFLAG,0,0,0,0,0,
+    0,0,0,0
 };
 char *c_flags_name[MAXCF]={
     "O","o","ic1","ic2",
@@ -72,7 +74,7 @@ char *c_flags_name[MAXCF]={
     "warnings-as-errors",
     "clist-copy-stack","clist-copy-static","clist-copy-pointer","inline-memcpy",
     "depobj","c89","force-statics","prefer-statics","range-opt","merge-strings",
-    "sec-per-obj","no-eff-ics","early-eff-ics"
+    "sec-per-obj","no-eff-ics","early-eff-ics","mask-opt"
 };
 union ppi c_flags_val[MAXCF];
 char *inname;
@@ -100,4 +102,4 @@ ecpp_dtor_list *ecpp_dlist[MAXN];
 
 char *cur_func="shouldn't happen!";
 Var *cur_funcv;
-char *copyright="vbcc V0.9h (c) in 1995-2022 by Volker Barthelmann";
+char *copyright="vbcc V0.9i pre (c) in 1995-2022 by Volker Barthelmann";

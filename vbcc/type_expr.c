@@ -1,4 +1,4 @@
-/*  $VER: vbcc (type_expr.c) $Revision: 1.58 $   */
+/*  $VER: vbcc (type_expr.c) $Revision: 1.64 $   */
 
 #include "vbc.h"
 
@@ -6,13 +6,46 @@ static char FILE_[]=__FILE__;
 
 #define CONSTADDR 256
 
+
+/* if MASK is set, a specialized version will be generated */
+#define USEHALF  (1L<<1)
+#define USELONG  (1L<<2)
+#define USELLONG (1L<<3)
+#define USEFLOAT (1L<<4)
+#define USEHEXL  (1L<<5)
+#define USEHEXU  (1L<<6)
+#define USEDEC   (1L<<7)
+#define USEOCT   (1L<<8)
+#define USEINT   (1L<<9)
+#define USEUNS   (1L<<10)
+#define USESTR   (1L<<11)
+#define USECHAR  (1L<<12)
+#define USEPERC  (1L<<13)
+#define USECNT   (1L<<14)
+#define USEALT   (1L<<15)
+#define USEZPAD  (1L<<16)
+#define USELALGN (1L<<17)
+#define USEBLANK (1L<<18)
+#define USESIGN  (1L<<19)
+#define USEWIDTH (1L<<20)
+#define USEAST   (1L<<21)
+#define USEPREC  (1L<<22)
+#define USESPEC  (1L<<23)
+#define USEREXP  (1L<<24)
+
 int alg_opt(np,type *);
+void simple_alg_opt(np);
 int test_assignment(type *,np);
 int type_expression2(np,type *);
 void make_cexpr(np);
 
 int dontopt;
 int no_cast_free;
+
+type uct={UNSIGNED|CHAR};
+type ust={UNSIGNED|SHORT};
+type uit={UNSIGNED|INT};
+type ult={UNSIGNED|LONG};
 
 #ifdef HAVE_ECPP
 /* removed */
@@ -367,6 +400,28 @@ int const_typ(type *p)
             if(const_typ((*p->exact->sl)[i].styp)) return(1);
     return 0;
 }
+int arith_flag(int ta,int tb)
+{
+  /* TODO: volatile? */
+  ta&=NU;tb&=NU;
+  if(ta==LDOUBLE||tb==LDOUBLE) return LDOUBLE;
+  if(ta==DOUBLE||tb==DOUBLE) return DOUBLE;
+  if(ta==FLOAT||tb==FLOAT) return FLOAT;
+  ta=int_erw(ta);tb=int_erw(tb);
+  if(ta==(UNSIGNED|LLONG)||tb==(UNSIGNED|LLONG)) return UNSIGNED|LLONG;
+  if(ta==LLONG||tb==LLONG) return LLONG;
+  if(ta==(UNSIGNED|LONG)||tb==(UNSIGNED|LONG)) return UNSIGNED|LONG;
+  if((ta==LONG&&tb==(UNSIGNED|INT))||(ta==(UNSIGNED|INT)&&tb==LONG)){
+    if(zumleq(t_max(UNSIGNED|INT),t_max(LONG))) 
+      return LONG;
+    else
+      return UNSIGNED|LONG;
+  }
+  if(ta==LONG||tb==LONG) return LONG;
+  if(ta==(UNSIGNED|INT)||tb==(UNSIGNED|INT)) return UNSIGNED|INT;
+  return INT;
+}
+
 type *arith_typ(type *a,type *b)
 /*  Erzeugt Typ fuer arithmetische Umwandlung von zwei Operanden    */
 {
@@ -464,6 +519,7 @@ int type_expression(np p,type *ttyp)
 {
 		int ret_val;
     dontopt=0;
+    simple_alg_opt(p);
 #ifdef HAVE_MISRA
 /* removed */
 /* removed */
@@ -507,6 +563,74 @@ static int ptype(np op)
 #else
   return POINTER_TYPE(op->ntyp);
 #endif
+}
+
+static int decide_shortcut(np p,type *ttyp)
+{
+  int ttf=ttyp->flags,f=p->flags;
+  if(f==PMULT) f=MULT;
+  if(!shortcut(f,ttyp->flags&NU)||
+     ISFLOAT(ttf)||ISFLOAT(p->left->ntyp->flags)||ISFLOAT(p->right->ntyp->flags)
+     )
+    return 0;
+  ttf&=NQ;
+  if(ttf<INT) return 1;
+  if(zm2l(sizetab[ttf])<zm2l(sizetab[(p->left->ntyp->flags&NQ)])) return 1;
+  if(zm2l(sizetab[ttf])<zm2l(sizetab[(p->right->ntyp->flags&NQ)])) return 1;
+  return 0;
+}
+
+
+
+static type *best_addi2pt(zmax sz)
+{
+  if(!zmeqto(sizetab[CHAR],sizetab[INT])&&!zmeqto(sz,Z0)&&MINADDI2P<=CHAR&&zumleq(zm2zum(sz),zumadd(tu_max[CHAR],ZU1))){
+    return &uct;
+  }else if(!zmeqto(sizetab[SHORT],sizetab[INT])&&!zmeqto(sz,Z0)&&MINADDI2P<=SHORT&&zumleq(zm2zum(sz),zumadd(tu_max[SHORT],ZU1))){
+    return &ust;
+  }
+  return 0;
+}
+
+type *andcomp(np and,np cmp)
+{
+  int i=0;zmax sval;zumax uval;
+  if(cmp){
+    if((cmp->flags==CEXPR||cmp->flags==PCEXPR)){i=1;eval_constn(cmp);sval=vmax;uval=vumax;}
+  }else{
+    sval=Z0;uval=ZU0;
+    i=1;
+  }
+  if(and->flags==AND&&(and->left->flags==CEXPR||and->left->flags==PCEXPR)){i|=2;eval_constn(and->left);}
+  if(and->flags==AND&&(and->right->flags==CEXPR||and->right->flags==PCEXPR)){i|=2;eval_constn(and->right);}
+  if(i&2){
+    /*printf("CHECK: x&%ld ==/!= %ld\n",zm2l(vmax),(i&1)?zm2l(sval):-1L);*/
+    if(shortcut(COMPARE,UNSIGNED|CHAR)&&shortcut(AND,UNSIGNED|CHAR)&&!zmeqto(sizetab[CHAR],sizetab[SHORT])){
+      if(zmleq(vmax,t_max[CHAR]))
+	return &uct;
+      else if((i&1)&&zumleq(vumax,tu_max[CHAR])&&zumleq(uval,tu_max[CHAR]))
+	return &uct;
+    }
+    if(shortcut(COMPARE,UNSIGNED|SHORT)&&shortcut(AND,UNSIGNED|SHORT)&&!zmeqto(sizetab[SHORT],sizetab[INT])){
+      if(zmleq(vmax,t_max[SHORT]))
+	return &ust;
+      else if((i&1)&&zumleq(vumax,tu_max[SHORT])&&zumleq(uval,tu_max[SHORT]))
+	return &ust;
+    }
+    if(!zmeqto(sizetab[INT],sizetab[LONG])){
+      if(zmleq(vmax,t_max[INT]))
+	return &uit;
+      else if((i&1)&&zumleq(vumax,tu_max[INT])&&zumleq(uval,tu_max[INT]))
+	return &uit;
+    }
+    if(!zmeqto(sizetab[LONG],sizetab[LLONG])){
+      if(zmleq(vmax,t_max[LONG]))
+	return &ult;
+      else if((i&1)&&zumleq(vumax,tu_max[LONG])&&zumleq(uval,tu_max[LONG]))
+	return &ult;
+    }
+  }
+  return 0;
 }
 
 static int nullpointer(np p)
@@ -607,6 +731,14 @@ int type_expression2(np p,type *ttyp)
     assignop=0;
   }else
     aoflag=0;
+
+  if(!shorttyp){
+    if(f==EQUAL||f==INEQUAL){
+      if(p->left->flags==AND) shorttyp=andcomp(p->left,p->right);
+      if(p->right->flags==AND) shorttyp=andcomp(p->right,p->left);
+    }
+  }
+  if(!shorttyp&&(f==LAND||f==LOR)&&p->left->flags==AND) shorttyp=andcomp(p->left,0);
   if(p->left&&p->flags!=ASSIGNOP){
     struct_declaration *sd;
     /*  bei ASSIGNOP wird der linke Zweig durch den Link bewertet  */
@@ -623,6 +755,29 @@ int type_expression2(np p,type *ttyp)
     shorttyp=p->left->ntyp;
     ttyp=shorttyp;
     ttf=ttyp->flags&NQ;
+  }
+
+  if(f==LAND||f==LOR){
+    shorttyp=0;
+    if(p->right->flags==AND) shorttyp=andcomp(p->right,0);
+  }
+
+  if(f==ADD){
+    if(p->left->flags==ADDRESSS||p->left->flags==ADDRESSA||p->left->flags==ADDRESSS){
+      zmax sz=szof(p->left->left->ntyp);
+      shorttyp=best_addi2pt(sz);
+    }
+    if((p->left->ntyp->flags&NQ)==ARRAY){
+      zmax sz=szof(p->left->ntyp);
+      shorttyp=best_addi2pt(sz);
+      if(shorttyp){
+	np new=new_node();
+	new->flags=CAST;
+	new->ntyp=clone_typ(shorttyp);
+	new->left=p->right;
+	p->right=new;
+      }
+    }
   }
   if(p->right&&p->right->flags!=MEMBER){
     struct_declaration *sd;
@@ -663,6 +818,7 @@ int type_expression2(np p,type *ttyp)
   if(p->left&&f!=PCEXPR&&(ISARRAY(p->left->ntyp->flags)||ISFUNC(p->left->ntyp->flags))){
     if(f!=ADDRESS&&f!=ADDRESSA&&f!=ADDRESSS&&f!=FIRSTELEMENT&&f!=DSTRUCT&&(f<PREINC||f>POSTDEC)&&(f<ASSIGN||f>ASSIGNOP)){
       np new=new_node();
+      zmax sz=szof(p->left->ntyp);
       if((p->left->ntyp->flags&NQ)==ARRAY) new->flags=ADDRESSA;
       else new->flags=ADDRESS;
       new->ntyp=0;
@@ -761,11 +917,26 @@ int type_expression2(np p,type *ttyp)
 /* removed */
 #endif
     if(!ecpp){
-    if(p->identifier==empty)
-      /* variable sizeof-expression */
-      v=p->dsize;
-    else
-      v=find_var(p->identifier,0);
+      if(p->identifier==empty)
+	/* variable sizeof-expression */
+	v=p->dsize;
+      else{
+	char buf[20];
+	v=find_var(p->identifier,0);
+	if(v&&v->storage_class==EXTERN){
+	  if(!strcmp(p->identifier,"strtod")){sprintf(buf,"vfscanf.%ld",1|USEFLOAT);needs(buf);}
+	  if(!strcmp(p->identifier,"strtof")){sprintf(buf,"vscanf.%ld",1|USEFLOAT);needs(buf);}
+	  if(!strcmp(p->identifier,"atof")){sprintf(buf,"vscanf.%ld",1|USEFLOAT);needs(buf);}
+	  if(!strcmp(p->identifier,"tmpnam")){sprintf(buf,"vfprintf.%ld",1|USEDEC);needs(buf);}
+	  if(!strcmp(p->identifier,"fopen")){
+	    needs("__read.2");
+	    needs("__write.2");
+	    needs("stdin.2");
+	    needs("stdout.2");
+	    needs("stderr.2");
+	  }
+	}
+      }
     }
     if(v==0){error(82,p->identifier);return(0);}
     if(disallow_statics&&v->storage_class==STATIC&&v->nesting==0&&*v->identifier){
@@ -791,7 +962,7 @@ int type_expression2(np p,type *ttyp)
       p->ntyp->flags=CONST|INT;
     }
     p->o.v=v;
-	if (p->ntyp->flags&VOLATILE) p->sidefx=1; /* Touching a volatile may have side effects */
+    if (p->ntyp->flags&VOLATILE) p->sidefx=1; /* Touching a volatile may have side effects */
     return 1;
   }
 
@@ -893,7 +1064,7 @@ int type_expression2(np p,type *ttyp)
 /* removed */
 /* removed */
 #endif
-    if(ttyp&&(ttf<=INT||ttf<(p->left->ntyp->flags&NQ)||ttf<(p->right->ntyp->flags&NQ))&&shortcut(f,ttyp->flags&NU)&&(!must_convert(p->left->ntyp->flags,ttyp->flags,0)||!must_convert(p->right->ntyp->flags,ttyp->flags,0)))
+    if(ttyp&&decide_shortcut(p,ttyp))
       p->ntyp=clone_typ(ttyp);
     else
       p->ntyp=arith_typ(p->left->ntyp,p->right->ntyp);
@@ -1138,9 +1309,9 @@ int type_expression2(np p,type *ttyp)
 #endif
 	    p->right=new;
 #ifdef MAXADDI2P
-	    ok&=type_expression2(new,&pmt);
+	    ok&=type_expression2(new,(shorttyp&&(shorttyp->flags&NQ)<MAXADDI2P)?shorttyp:&pmt);
 #else
-	    ok&=type_expression2(new,0);
+	    ok&=type_expression2(new,shorttyp);
 #endif
 	  }
 	  typf=1;
@@ -1232,7 +1403,7 @@ int type_expression2(np p,type *ttyp)
 #endif
       }else{
 	/* ggfs. in kleinerem Zieltyp auswerten - bei float keinen shortcut (wäre evtl. double=>float unkritisch?) */
-	if(ttyp&&(ttf<=INT||ttf<(p->left->ntyp->flags&NQ)||ttf<(p->right->ntyp->flags&NQ))&&!ISFLOAT(ttf)&&!ISFLOAT(p->left->ntyp->flags)&&!ISFLOAT(p->right->ntyp->flags)&&shortcut(f==PMULT?MULT:f,ttyp->flags&NU)&&(!must_convert(p->left->ntyp->flags,ttyp->flags,0)||!must_convert(p->right->ntyp->flags,ttyp->flags,0)))
+	if(ttyp&&decide_shortcut(p,ttyp))
 	  p->ntyp=clone_typ(ttyp);
 	else
 	  p->ntyp=arith_typ(p->left->ntyp,p->right->ntyp);
@@ -1762,29 +1933,38 @@ int type_expression2(np p,type *ttyp)
 	if(al->arg->left&&al->arg->left->flags==STRING){
 	  /*  Argumente anhand des Formatstrings ueberpruefen */
 	  const_list *cl=al->arg->left->cl;
-	  int fused=0;
+	  int fused=0;long mask=1;
 	  al=al->next;
 	  while(cl&&cl->other){
-	    int c,fflags=' ',at;
+	    int c,fflags=' ',at,lflag;
 	    type *t;
 	    enum{LL=1,HH};
 	    c=(int)zm2l(zc2zm(cl->other->val.vchar));
-	    c=CHARBACK(c);
-	    cl=cl->next;
+ 	    cl=cl->next;
 	    if(c==0){
 	      if(cl) error(215);
 	      break;
 	    }
+	    c=CHARBACK(c);
 	    if(c!='%') continue;
 	    if(!cl){error(214);return ok;}
+	    lflag=0;
 	    c=(int)zm2l(zc2zm(cl->other->val.vchar));
 	    c=CHARBACK(c);
 	    cl=cl->next;
 	    while(isdigit((unsigned char)c)||
 		  c=='-'||c=='+'||c==' '||c=='#'||c=='.'||
 		  c=='h'||c=='l'||c=='L'||c=='z'||c=='j'||c=='t'||c=='*'){
+	      if(c=='-') mask|=USELALGN;
+	      if(c=='+') mask|=USESIGN;
+	      if(c=='#') mask|=USEALT;
+	      if(c=='.') mask|=USEPREC;
+	      if(c==' ') mask|=USEBLANK;
+	      if(c=='0'&&!(mask&USEPREC)&&!(mask&USEWIDTH)) mask|=USEZPAD;
+	      if(isdigit((unsigned char)c)&&!(mask&USEPREC)) mask|=USEWIDTH;
 	      fused|=3;
 	      if(c=='*'&&(flags&PRINTFLIKE)){
+		mask|=USEAST;
 		if(!al) {error(214);return ok;}
 		at=al->arg->ntyp->flags&NQ;
 		al=al->next;
@@ -1804,13 +1984,14 @@ int type_expression2(np p,type *ttyp)
 	      if(!cl){error(214);return ok;}
 	    }
 	    /*FIXME: assumes intmax_t==long long */
-	    if(fflags=='j') fflags=LL;
+	    if(fflags=='j') {mask|=USESPEC;fflags=LL;}
 #if HAVE_INT_SIZET	    
-	    if(fflags=='z') fflags=' ';
+	    if(fflags=='z') {mask|=USESPEC;fflags=' ';}
 #else
-	    if(fflags=='z') fflags='l';
+	    if(fflags=='z') {mask|=USESPEC;fflags='l';}
 #endif
 	    if(fflags=='t'){
+	      mask|=USESPEC;
 	      if(PTRDIFF_T(CHAR)==LLONG)
 		fflags=LL;
 	      else if(PTRDIFF_T(CHAR)==LONG)
@@ -1818,6 +1999,10 @@ int type_expression2(np p,type *ttyp)
 	      else
 		fflags=' ';
 	    }
+	    if(fflags==HH) lflag|=USESPEC;
+	    if(fflags=='h') lflag|=USEHALF;
+	    if(fflags=='l') lflag|=USELONG;
+	    if(fflags==LL) lflag|=USELLONG;
 	    if(DEBUG&1) printf("format=%c%c\n",fflags,c);
 	    if(fflags=='*'&&(flags&SCANFLIKE)) continue;
 	    if(c!='%'){
@@ -1833,6 +2018,7 @@ int type_expression2(np p,type *ttyp)
 	    if(flags&PRINTFLIKE){
 	      switch(c){
 	      case '%':
+		mask|=USEPERC;
 		fused|=1;
 		break;
 	      case 'o':
@@ -1847,16 +2033,26 @@ int type_expression2(np p,type *ttyp)
 		if(at==LONG&&fflags!='l'){error(214);return ok;}
 		if(fflags=='l'&&at!=LONG){error(214);return ok;}
 		if(at<CHAR||at>LLONG){error(214);return ok;}
+		if(c=='o') mask|=USEOCT;
+		if(c=='x') mask|=USEHEXL;
+		if(c=='X') mask|=USEHEXU;
+		if(c=='i') mask|=USEINT;
+		if(c=='d') mask|=USEDEC;
+		if(c=='c') mask|=USECHAR;
+		mask|=lflag;
 		break;
 	      case 'u':
+		mask|=USEUNS;
 		fused|=1;
 		if(al->arg->flags==CEXPR) at|=UNSIGNED;
 		if(at==(UNSIGNED|LLONG)&&fflags!=LL){error(214);return ok;}
 		if(at==(UNSIGNED|LONG)&&fflags!='l'){error(214);return ok;}
 		if(fflags=='l'&&at!=(UNSIGNED|LONG)){error(214);return ok;}
 		if(at<(UNSIGNED|CHAR)||at>(UNSIGNED|LLONG)){error(214);return ok;}
+		mask|=lflag;
 		break;
 	      case 's':
+		mask|=USESTR;
 		fused|=1;
 		if(!ISPOINTER(at)||(t->next->flags&NQ)!=CHAR){error(214);return ok;}
 		break;
@@ -1865,6 +2061,7 @@ int type_expression2(np p,type *ttyp)
 	      case 'E':
 	      case 'g':
 	      case 'G':
+		mask|=USEFLOAT;
 		fused|=7;
 		if(fflags=='L'){
 		  if(at!=LDOUBLE){error(214); return ok;}
@@ -1873,10 +2070,12 @@ int type_expression2(np p,type *ttyp)
 		}
 		break;
 	      case 'p':
+		mask|=USESPEC;
 		fused|=3;
 		if(!ISPOINTER(at)||(t->next->flags)!=VOID){error(214);return ok;}
 		break;
 	      case 'n':
+		mask|=USECNT;
 		fused|=3;
 		if(!ISPOINTER(at)){error(214);return ok;}
 		at=t->next->flags&NU;
@@ -1890,11 +2089,22 @@ int type_expression2(np p,type *ttyp)
 		error(214);return ok;
 	      }
 	    }else{
+	      if(c=='s') mask|=USESTR;
+	      if(c=='c') mask|=USECHAR;
+	      if(c=='n') mask|=USECNT;
+	      if(c=='d') mask|=USEDEC;
+	      if(c=='i') mask|=USEINT;
+	      if(c=='o') mask|=USEOCT;
+	      if(c=='x') mask|=USEHEXL;
+	      if(c=='u') mask|=USEUNS;
+
 	      switch(c){
 	      case '%':
+		mask|=USEPERC;
 		fused|=1;
 		break;
 	      case '[':
+		mask|=USEREXP;
 		fused|=3;
 		do{
 		  c=(int)zm2l(zc2zm(cl->other->val.vchar));
@@ -1931,12 +2141,14 @@ int type_expression2(np p,type *ttyp)
 	      case 'e':
 	      case 'f':
 	      case 'g':
+		mask|=USEFLOAT;
 		fused|=7;
 		if(fflags==' '&&at!=FLOAT){error(214);return ok;}
 		if(fflags=='l'&&at!=DOUBLE){error(214);return ok;}
 		if(fflags=='L'&&at!=LDOUBLE){error(214);return ok;}
 		break;
 	      case 'p':
+		mask|=USESPEC;
 		fused|=3;
 		if(!ISPOINTER(at)||(t->next->flags&NQ)!=VOID){error(214);return ok;}
 		break;
@@ -1948,7 +2160,26 @@ int type_expression2(np p,type *ttyp)
 	  }
 	  if(al){ error(214);return ok;} /* zu viele */
 	  if(DEBUG&1) printf("fused=%d\n",fused);
-	  if(fused!=7&&s){
+	  if(mask_opt){
+	    Var *v;char repl[MAXI+16];
+	    if(mask){
+	      sprintf(repl,"%s.%lu",s,1L);
+	      v=find_var(repl,0);
+	      if(!v){
+		type *t;
+		v=find_var(s,0);
+		if(!v) ierror(0);
+		v=add_var(repl,clone_typ(v->vtyp),EXTERN,0);
+	      }
+	    }
+	    if(mask)
+	      sprintf(repl,"%s.%lu",(flags&PRINTFLIKE)?"vfprintf":"vfscanf",mask);
+	    else
+	      sprintf(repl,"%s",(flags&PRINTFLIKE)?"vfprintf":"vfscanf");
+	    needs(repl);
+	    p->left->left->o.v=v;
+	    if(DEBUG&1) printf("repl=%s\n",repl);
+	  }else if(fused!=7&&s){
 	    /*  Wenn kein Format benutzt wird, kann man printf, */
 	    /*  scanf etc. durch aehnliches ersetzen.           */
 	    Var *v;char repl[MAXI+6]="__v";
@@ -2077,6 +2308,150 @@ np makepointer(np p)
     }else 
       return p;
 }
+
+void simple_alg_opt(np p)
+{
+  int c=0,f,t=0;
+  zldouble d1,d2;
+  zumax u1,u2;zmax s1,s2;
+  Var *v;
+
+  if(!p) return;
+
+  f=p->flags;
+
+  if(f==IDENTIFIER&&(v=find_var(p->identifier,0))&&(v->vtyp->flags&NQ)==ENUM){
+    /*  enumerations auch als Konstante (int) behandeln */
+    p->flags=CEXPR;
+    if(!v->clist) ierror(0);
+    p->val=v->clist->val;
+    if(!p->ntyp) p->ntyp=new_typ();
+    p->ntyp->flags=CONST|INT;
+    return;
+  }
+
+
+  if(p->left)
+    simple_alg_opt(p->left);
+  else
+    return;
+  if(p->right)
+    simple_alg_opt(p->right);
+
+  if(p->left->flags==CEXPR||p->left->flags==PCEXPR){
+    eval_constn(p->left);
+    d1=vldouble;u1=vumax;s1=vmax;c|=1;
+  }
+  if(p->right&&(p->right->flags==CEXPR||p->right->flags==PCEXPR)){
+    eval_constn(p->right);
+    d2=vldouble;u2=vumax;s2=vmax;c|=2;
+  }
+
+  if(p->ntyp) t=p->ntyp->flags;
+
+  if(c==3&&((f>=OR&&f<=AND)||(f>=LSHIFT&&f<=MOD))){
+    if(DEBUG&1) printf("did simple_alg constant folding\n");
+    if(!t) t=arith_flag(p->left->ntyp->flags,p->right->ntyp->flags);
+    if(DEBUG&1) printf("did simple constant folding\n");
+
+    if(f==AND&&ISINT(t)){
+      vumax=zumand(u1,u2);
+      vmax=zmand(s1,s2);
+    }
+    if(f==OR&&ISINT(t)){
+      vumax=zumor(u1,u2);
+      vmax=zmor(s1,s2);
+    }
+    if(f==XOR&&ISINT(t)){
+      vumax=zumxor(u1,u2);
+      vmax=zmxor(s1,s2);
+    }
+    if(f==ADD){
+      vumax=zumadd(u1,u2);
+      vmax=zmadd(s1,s2);
+      vldouble=zldadd(d1,d2);
+    }
+    if(f==SUB){
+      vumax=zumsub(u1,u2);
+      vmax=zmsub(s1,s2);
+      vldouble=zldsub(d1,d2);
+    }
+    if(f==MULT||f==PMULT){
+      vumax=zummult(u1,u2);
+      vmax=zmmult(s1,s2);
+      vldouble=zldmult(d1,d2);
+      if(f==PMULT) p->flags=PCEXPR;
+    }
+    if(f==DIV){
+      if(zmeqto(l2zm(0L),s2)&&zumeqto(ul2zum(0UL),u2)&&zldeqto(d2zld(0.0),d2)){
+	error(84);
+	vmax=l2zm(0L);vumax=ul2zum(0UL);vldouble=d2zld(0.0);
+      }else{
+	if(!zumeqto(ul2zum(0UL),u2)) vumax=zumdiv(u1,u2);
+	if(!zmeqto(l2zm(0L),s2)) vmax=zmdiv(s1,s2);
+	if(!zldeqto(d2zld(0.0),d2)) vldouble=zlddiv(d1,d2);
+      }
+    }
+    if(f==MOD&&ISINT(t)){
+      if(zmeqto(l2zm(0L),s2)&&zumeqto(ul2zum(0UL),u2)){
+	error(84);
+	vmax=l2zm(0L);vumax=zm2zum(vmax);
+      }else{
+	if(!zumeqto(ul2zum(0UL),u2)) vumax=zummod(u1,u2);
+	if(!zmeqto(l2zm(0L),s2)) vmax=zmmod(s1,s2);
+      }
+    }
+    if(f==LSHIFT&&ISINT(t)){
+      vumax=zumlshift(u1,u2);
+      vmax=zmlshift(s1,s2);
+    }
+    if(f==RSHIFT&&ISINT(t)){
+      vumax=zumrshift(u1,u2);
+      vmax=zmrshift(s1,s2);
+    }
+  }else if(c==1&&f==MINUS){
+    if(!t) t=arith_flag(p->left->ntyp->flags,p->left->ntyp->flags);
+    vmax=zmsub(Z0,s1);
+    vumax=zumsub(ZU0,u1);
+    vldouble=zldsub(d2zld(0.0),d1);
+  }else if(c==1&&f==KOMPLEMENT){
+    if(!t) t=arith_flag(p->left->ntyp->flags,p->left->ntyp->flags);
+    if(!ISINT(t)) return;
+    vmax=zmkompl(s1);
+    vumax=zumkompl(u1);
+  }else if(c==1&&f==NEGATION){
+    if(!p->left->ntyp) return;
+    t=INT;
+    if(!ISINT(p->left->ntyp->flags)){
+      if(zldeqto(d1,d2zld(0.0))) vmax=Z1; else vmax=Z0;
+    }else if(p->left->ntyp->flags&UNSIGNED){
+      if(zumeqto(u1,ZU0)) vmax=Z1; else vmax=Z0;
+    }else
+      if(zmeqto(s1,Z0)) vmax=Z1; else vmax=Z0;
+  }else
+    return;
+
+  p->flags=CEXPR;
+  if(p->left&&!p->left->sidefx) {free_expression(p->left);p->left=0;}
+  if(p->right&&p->right->sidefx) {free_expression(p->right);p->right=0;}
+
+  if(ISFLOAT(t)){
+    gval.vldouble=vldouble;
+    eval_const(&gval,LDOUBLE);
+  }else{
+    if(t&UNSIGNED){
+      gval.vumax=vumax;
+      eval_const(&gval,(UNSIGNED|MAXINT));
+    }else{
+      gval.vmax=vmax;
+      eval_const(&gval,MAXINT);
+    }
+  }
+  insert_const(&p->val,t);
+  if(!p->ntyp){p->ntyp=new_typ();p->ntyp->flags=t;}
+}
+
+
 int alg_opt(np p,type *ttyp)
 /*  fuehrt algebraische Vereinfachungen durch                   */
 /*  hier noch genau testen, was ANSI-gemaess erlaubt ist etc.   */
@@ -2173,7 +2548,7 @@ int alg_opt(np p,type *ttyp)
 	    eval_const(&gval,MAXINT);
 	  }
 	}
-        insert_constn(p);
+	insert_constn(p);
         return 1;
     }
     /*  Konstanten nach rechts, wenn moeglich       */

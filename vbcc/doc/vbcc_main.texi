@@ -319,6 +319,10 @@ or additional options.
 
                 This option only has effect if it is supported by the backend.
 
+    @item -mask-opt
+                Perform mask optimizations on suitable library function. This
+                will create calls to optimized versions of e.g. the printf/scanf
+                family of functions.
 
 @end table
 
@@ -1879,6 +1883,36 @@ The following macros are defined by the compiler.
 @end example
 @code{__STDC_VERSION__} is defined in C99-mode only.
 
+@subsection Masked symbols
+Together with vlink, this feature allows to provide a family of specially tailored
+functions in a library.
+
+A symbol can be attached a mask using the @code{__mask} attribute, e.g.
+
+@example
+  __mask(15) void myfunc(void);
+@end example
+
+The symbol of this function will get the suffix @code{.15} attached.
+
+A reference to a masked symbol can either be created by vbcc itself when using the
+option @code{-mask-opt}, or manually by referencing a symbol prefixed with
+@code{__maskm_<mask>}.
+
+@example
+ extern __mask(15) void myfunc(void);
+ ...
+   __maskm_15_myfunc();
+@end example
+
+If there are several masked references to a symbol, the linker will pull the first
+symbol containing a mask that has at least all bits set that are set in any masked
+reference. If no masked symbols matching that requirement are available, the symbol
+without a mask is used. Also, a non-masked reference will only pull a non-masked
+symbol from a library.
+
+Masked objects may only be defined in libraries and zero masks are not allowed.
+
 
 @section Known Problems
 
@@ -1890,7 +1924,7 @@ The following macros are defined by the compiler.
 
     @item Debugging-infos may have problems on higher optimization-levels.
 
-    @item String-constants are not merged.
+    @item String-constants are not merged (partially done).
 
 @end itemize
 

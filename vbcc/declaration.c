@@ -1,4 +1,4 @@
-/*  $VER: vbcc (declaration.c) $Revision: 1.85 $    */
+/*  $VER: vbcc (declaration.c) $Revision: 1.90 $    */
 
 #include <string.h>
 #include <stdio.h>
@@ -63,6 +63,17 @@ void init_sl(struct_list *sl);
 extern np gen_libcall(char *,np,type *,np,type *);
 extern int float_used;
 extern void optimize(long,Var *);
+
+extern type uct;
+
+void needs(char *s)
+{
+  Var *v;
+  if(!(v=find_ext_var(s))||!strcmp(v->identifier,s)){
+    Var *needs=add_var(s,clone_typ(&uct),EXTERN,0);
+    needs->flags|=(USEDASSOURCE|REFERENCED|NEEDS);
+  }		
+}
 
 static void clear_main_ret(void)
 {
@@ -866,6 +877,7 @@ type *declaration_specifiers(void)
         killsp();
         if(ctok->type==RPAR) next_token(); else error(59);
         killsp();
+	notdone=1;
       }else if(/*!(c_flags[7]&USEDFLAG)&&*/!strcmp("__attr",ctok->name)){
         char *d;
         next_token();killsp(); 
@@ -2492,10 +2504,12 @@ void var_declaration(void)
         }
 #endif
         if(vattr){
-	  add_attr(&v->vattr,vattr);
+	  if(!v->vattr||!strstr(v->vattr,vattr)){
+	    error(370,v->identifier,vattr,v->vattr?v->vattr:empty);
+	    add_attr(&v->vattr,vattr);
+	  }
           if(ISFUNC(v->vtyp->flags)) fi_from_attr(v);
         }
-
         if(!isfunc){
           if(!ISARRAY(t->flags)||!zmeqto(t->size,l2zm(0L))){
             free(v->vtyp);
@@ -2508,12 +2522,21 @@ void var_declaration(void)
           }
         }
       }
+#ifdef HAVE_TARGET_VARHOOK_POST
+      add_attr_haddecl=v;
+      add_var_hook_post(v);
+      add_attr_haddecl=0;
+#endif
+      
     }else{
       had_decl=0;
 #ifdef HAVE_MISRA
 /* removed */
 #endif
       if(isfunc&&ctok->type!=COMMA&&ctok->type!=SEMIC&&ctok->type!=RPAR&&ctok->type!=ASGN&&nesting>0) nesting--;
+      if(!zumeqto(mask,ul2zum(0UL))){
+	sprintf(vident+strlen(vident),".%lu",zum2ul(mask));
+      }
       v=add_var(vident,t,storage_class,0);
 #ifdef HAVE_ECPP
 /* removed */
@@ -2529,14 +2552,6 @@ void var_declaration(void)
       v->reg=hard_reg;
       if(vattr)
 	add_attr(&v->vattr,vattr);
-      if(!zumeqto(mask,ul2zum(0UL))){
-	char *new=mymalloc(strlen(v->identifier)+16);
-	strcpy(new,v->identifier);
-	strcat(new,".");
-	sprintf(new+strlen(new),"%lu",zum2ul(mask));
-	v->identifier=add_identifier(new,strlen(new));
-	free(new);
-      }
       if(ISFUNC(v->vtyp->flags))
         fi_from_attr(v);
 #ifdef HAVE_TARGET_ATTRIBUTES
@@ -3125,7 +3140,7 @@ void gen_clist(FILE *,type *,const_list *);
 void gen_vars(Var *v)
 /*  Generiert Variablen.                                    */
 {
-  int mode,al;Var *p;
+  int mode,al,first_pass=1;Var *p;
   if(errors!=0||(c_flags[5]&USEDFLAG)) return;
   if(optsize)
     al=zm2l(maxalign);
@@ -3135,6 +3150,7 @@ void gen_vars(Var *v)
     for(mode=0;mode<3;mode++){
       int i,flag;
       for(p=v;p;p=p->next){
+	if(p->flags&NEEDS) continue;
         if(optsize&&zm2l(falign(p->vtyp))!=al)
           continue;
         if(cross_module&&!(p->flags&REFERENCED)) continue;
@@ -3142,7 +3158,7 @@ void gen_vars(Var *v)
         if(p->storage_class==STATIC||p->storage_class==EXTERN){
           if(!(p->flags&GENERATED)){
             if(p->storage_class==EXTERN&&!(p->flags&(USEDASSOURCE|USEDASDEST))&&!(p->flags&(TENTATIVE|DEFINED))) continue;
-	if(p->storage_class==STATIC&&p->nesting>0&&!(p->flags&(USEDASSOURCE|USEDASDEST))) continue;
+	    if(p->storage_class==STATIC&&p->nesting>0&&!(p->flags&(USEDASSOURCE|USEDASDEST))) continue;
             /*  erst konstante initialisierte Daten */
             if(mode==0){
               if(!p->clist) continue;
@@ -3159,17 +3175,29 @@ void gen_vars(Var *v)
             /*  dann initiolisierte */
             if(mode==1&&!p->clist) continue;
             /*  und dann der Rest   */
-            if(mode==2&&p->clist) continue;
+         
+	    if(mode==2&&p->clist) continue;
+   
             if(!(p->flags&(TENTATIVE|DEFINED))){
-              if(!((p->vtyp->flags&NQ)==FUNKT)||!p->fi||!p->fi->inline_asm)
+              if(!((p->vtyp->flags&NQ)==FUNKT)||!p->fi||!p->fi->inline_asm){
+		if(mask_opt){
+		  if((p->flags&PRINTFLIKE)&&!strstr(p->identifier,".")) needs("vfprintf");
+		  if((p->flags&SCANFLIKE)&&!strstr(p->identifier,".")) needs("vfscanf");
+		}
                 gen_var_head(out,p);
+	      }
               if(p->storage_class==STATIC&&(!p->fi||!p->fi->inline_asm)) error(127,p->identifier);
               continue;
             }else{
               /*gen_align(out,falign(p->vtyp));*/
             }
-            if(!((p->vtyp->flags&NQ)==FUNKT)||!p->fi||!p->fi->inline_asm)
+            if(!((p->vtyp->flags&NQ)==FUNKT)||!p->fi||!p->fi->inline_asm){
+	      if(mask_opt){
+		if((p->flags&PRINTFLIKE)&&!strstr(p->identifier,".")) needs("vfprintf");
+		if((p->flags&SCANFLIKE)&&!strstr(p->identifier,".")) needs("vfscanf");
+	      }
               gen_var_head(out,p);
+	    }
             if(!p->clist){
               if(type_uncomplete(p->vtyp)) error(202,p->identifier);
               gen_ds(out,szof(p->vtyp),p->vtyp);
@@ -3189,7 +3217,12 @@ void gen_vars(Var *v)
           }
         }
       }
+      first_pass=0;
     }
+  }
+  if(mask_opt){
+    for(p=v;p;p=p->next)
+      if(p->flags&NEEDS) gen_var_head(out,p);
   }
 }
 

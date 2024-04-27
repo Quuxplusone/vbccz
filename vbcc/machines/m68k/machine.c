@@ -1,4 +1,4 @@
-/*  $VER: vbcc (m68k/machine.c) $Revision: 1.138 $     */
+/*  $VER: vbcc (m68k/machine.c) $Revision: 1.139 $     */
 /*  Code generator for Motorola 680x0 CPUs. Supports 68000-68060+68881/2    */
 /*  and ColdFire.                                                           */
 /*  vasm, PhxAss and the GNU assembler is supported.                        */
@@ -589,8 +589,10 @@ static IC *do_refs(FILE *f,IC *p)
         equal=0;
         if(compare_objects(&p->q1,&p->q2)) equal|=1;
         if(compare_objects(&p->q1,&p->z)) equal|=2;
-	if((p->code==CALL||p->code==PUSH)&&!pregavailable(p,0))
+	if(p->code==PUSH&&!pregavailable(p,0))
 	  reg=pget_reg(f,0,p,0);
+	else if(p->code==CALL&&!pregavailable(p,0))
+	  return p;
 	else
 	  reg=get_reg(f,0,p,0);
         p->q1.flags&=~DREFOBJ;
@@ -2608,7 +2610,8 @@ static void restoreregsd(FILE *f,IC *p)
 static void emit_lword(FILE *f,obj *o)
 {
   if((o->flags&(REG|DREFOBJ))==REG){
-    if(!reg_pair(o->reg,&rp)) ierror(0);
+    if(!reg_pair(o->reg,&rp))
+      ierror(0);
     emit(f,"%s",mregnames[rp.r2]);
   }else if((o->flags&(KONST|DREFOBJ))==KONST){
     eval_const(&o->val,UNSIGNED|LLONG);
@@ -4629,17 +4632,34 @@ void gen_code(FILE *f,IC *p,Var *v,zmax offset)
 	else
 	  stack_valid=0;
       }else{
-	if(GAS){
-	  emit(f,"\tjbsr\t");
+	if((p->q1.flags&(REG|DREFOBJ))==DREFOBJ){
+	  if(1/*CPU<68020*/){
+	    emit(f,"\tpea\t%s%d(pc)\n",labprefix,++label);
+	    emit(f,"\tmove.l\t");
+	  }else
+	    emit(f,"\t%s\t([",GAS?"jbsr":"jsr");
+	  p->q1.flags&=~DREFOBJ;
+	  emit_obj(f,&p->q1,POINTER);
+	  p->q1.flags|=DREFOBJ;
+	  if(1/*CPU<68020*/){
+	    emit(f,",-(%s)\n",mregnames[sp]);
+	    emit(f,"\trts\n");
+	    emit(f,"%s%d%s\n",labprefix,label,GAS?":":"");
+	  }else
+	    emit(f,"])\n");
 	}else{
-	  emit(f,"\tjsr\t");
+	  if(GAS){
+	    emit(f,"\tjbsr\t");
+	  }else{
+	    emit(f,"\tjsr\t");
+	  }
+	  /*  Wenn geta4() aufgerufen wurde, merken.  */
+	  if(use_sd&&(p->q1.flags&(VAR|DREFOBJ))==VAR&&!strcmp(p->q1.v->identifier,"geta4")&&p->q1.v->storage_class==EXTERN)
+	    geta4=1;
+	  if((p->q1.flags&(DREFOBJ|REG|KONST))==DREFOBJ) ierror(0);
+	  emit_obj(f,&p->q1,t);
+	  emit(f,"\n");
 	}
-	/*  Wenn geta4() aufgerufen wurde, merken.  */
-	if(use_sd&&(p->q1.flags&(VAR|DREFOBJ))==VAR&&!strcmp(p->q1.v->identifier,"geta4")&&p->q1.v->storage_class==EXTERN)
-	  geta4=1;
-	if((p->q1.flags&(DREFOBJ|REG|KONST))==DREFOBJ) ierror(0);
-	emit_obj(f,&p->q1,t);
-	emit(f,"\n");
 	push(4);
 	if(stack_valid&&(p->q1.flags&(VAR|DREFOBJ))==VAR&&p->q1.v->fi&&(p->q1.v->fi->flags&ALL_STACK))
 	  callee_push(zum2ul(p->q1.v->fi->stack1));

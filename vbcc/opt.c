@@ -1,4 +1,4 @@
-/*  $VER: vbcc (opt.c) $Revision: 1.48 $    */
+/*  $VER: vbcc (opt.c) $Revision: 1.52 $    */
 /*  allgemeine Routinen fuer den Optimizer und Steuerung der einzelnen  */
 /*  Laeufe                                                              */
 
@@ -382,6 +382,7 @@ void calc_finfo(Var *v,int flags)
 void used_clist(type *t,const_list *cl)
 {
   int i;zmax l;
+
   if(ISARRAY(t->flags)){
     for(l=l2zm(0L);!zmleq(t->size,l)&&cl;l=zmadd(l,l2zm(1L)),cl=cl->next){
       if(!cl->other){ierror(0);return;}
@@ -395,12 +396,16 @@ void used_clist(type *t,const_list *cl)
   }
   if(ISSTRUCT(t->flags)){
     type *st;
-    for(i=0;i<t->exact->count&&cl;i++){
-      st=(*t->exact->sl)[i].styp;
-      if(!(*t->exact->sl)[i].identifier) ierror(0);
-      if((*t->exact->sl)[i].identifier[0]){
-        if(cl->other) used_clist(st,cl->other);
-        cl=cl->next;
+    if(!cl||!cl->tree){
+      for(i=0;i<t->exact->count&&cl;i++){
+	st=(*t->exact->sl)[i].styp;
+	if(!(*t->exact->sl)[i].identifier) ierror(0);
+	if(zmeqto(l2zm((long)i),cl->idx)){
+	  if((*t->exact->sl)[i].identifier[0]){
+	    if(cl->other) used_clist(st,cl->other);
+	    cl=cl->next;
+	  }
+	}
       }
     }
     return;
@@ -1147,6 +1152,44 @@ int peephole()
 	    p->q2.val=gval;p2->code=BLT;changed=1;
 	    if(DEBUG&1024) printf("cmp #-1 replaced by cmp #0\n(2)");
 	  }
+	}else if((t&UNSIGNED)&&zmeqto(vmax,Z0)){
+	  IC *p2=p->next;
+	  if(p2->code==BLT){
+	    if(DEBUG&1024){printf("cmp uns,#0; blt eliminated\n");pric2(stdout,p);}
+	    remove_IC(p);
+	    p=p2->next;
+	    remove_IC(p2);
+	    continue;
+	  }
+	  if(p2->code==BGE){
+	    if(DEBUG&1024){printf("cmp uns,#0; bge to bra\n");pric2(stdout,p);}
+	    remove_IC(p);
+	    p2->code=BRA;
+	    p=p2;
+	    continue;
+	  }
+	  if(p2->code==BLE){
+	    if(DEBUG&1024){printf("cmp uns,#0; ble to beq\n");pric2(stdout,p);}
+	    p2->code=BEQ;
+	  }else if(p2->code==BGT){
+	    if(DEBUG&1024){printf("cmp uns,#0; bgt to bne\n");pric2(stdout,p);}
+	    p2->code=BNE;
+	  }
+	}else if((t&UNSIGNED)&&zmeqto(vmax,Z1)){
+	  IC *p2=p->next;
+	  if(p2->code==BLT){
+	    if(DEBUG&1024){printf("cmp uns,#1; blt to cmp #0;beq\n");pric2(stdout,p);}
+	    gval.vmax=Z0;
+	    eval_const(&gval,MAXINT);
+	    insert_const(&p->q2.val,p->typf);
+	    p2->code=BEQ;
+	  }else if(p2->code==BGE){
+	    if(DEBUG&1024){printf("cmp uns,#1; bge to cmp #0;bne\n");pric2(stdout,p);}
+	    gval.vmax=Z0;
+	    eval_const(&gval,MAXINT);
+	    insert_const(&p->q2.val,p->typf);
+	    p2->code=BNE;
+	  }
 	}
       }
       if(c>=BEQ&&c<BRA&&p->next&&p->next->code==BRA&&p->typf==p->next->typf){
@@ -1438,6 +1481,7 @@ int peephole()
 	remove_IC(d); continue;
       }
 #if 1
+      /* TODO: better decision when to use for which targets? */
       if(c==CONVERT&&(p->q1.flags&(VAR|DREFOBJ))==VAR&&(p->z.flags&(VAR|DREFOBJ))==VAR&&!is_volatile_ic(p)){
 	IC *p1=p->next;
 	if(p1&&p1->code==CONVERT&&(p->typf2&NQ)==(p1->typf&NQ)&&(p->typf&NQ)==(p1->typf2&NQ)&&zmleq(sizetab[p->typf2&NQ],sizetab[p->typf&NQ])&&!compare_objs(&p->z,&p1->q1,p->typf2)&&!is_volatile_ic(p1)&&ISFLOAT(p->typf)==ISFLOAT(p->typf2)){
@@ -1447,7 +1491,8 @@ int peephole()
 	  p1->q2.val.vmax=sizetab[p1->typf&NQ];
 	  continue;
 	}
-	if(p1&&(p1->code==ADDI2P||p1->code==SUBIFP)&&(p1->typf&NU)==(p->typf&NU)&&!compare_objs(&p->z,&p1->q2,p1->typf)&&!is_volatile_ic(p1)&&(p->typf2&NQ)>=MINADDI2P&&(p->typf2&NQ)<=MAXADDI2P){
+	/* TODO: better decision when to use for which targets? */
+	if(p1&&(p1->code==ADDI2P||p1->code==SUBIFP)&&(p1->typf&NU)==(p->typf&NU)&&!compare_objs(&p->z,&p1->q2,p1->typf)&&!is_volatile_ic(p1)&&(p->typf2&NQ)>=MINADDI2P&&(p->typf2&NQ)<=MAXADDI2P&&zmleq(sizetab[p->typf2&NQ],sizetab[p->typf&NQ])){
 	  if((p->typf2&UNSIGNED)&&(p->typf2&NU)>=MINADDUI2P){
 	    if(DEBUG&1024){printf("propagating CONVERT/ADDI2P:\n");pric2(stdout,p);pric2(stdout,p1);}
 	    p1->q2=p->q1;
@@ -1475,6 +1520,18 @@ int peephole()
 	      changed=1;
 	    }
 	  }
+	}
+      }
+
+      if((c==ADDI2P||c==SUBIFP)&&(p->q1.flags&(VARADR|DREFOBJ))==VARADR){
+	IC *p2=p->next;
+	if(p2->code==ADDI2P&&p->typf2==p2->typf2&&!compare_objs(&p->z,&p2->q1,p->typf2)&&(p2->q2.flags&(KONST|DREFOBJ))==KONST){
+	  if(DEBUG&1024){printf("rearranging ADDI2P to fold VARADR+const\n");pric2(stdout,p);pric2(stdout,p2);}
+	  eval_const(&p2->q2.val,p2->typf);
+	  p->q1.val.vmax=zmadd(p->q1.val.vmax,vmax);
+	  p2->code=ASSIGN;
+	  p2->typf=p2->typf2;
+	  p2->q2.val.vmax=sizetab[p2->typf&NQ];
 	}
       }
 

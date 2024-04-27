@@ -166,6 +166,7 @@ static struct obj mobj;
 #define ISLWORD(t) ((t&NQ)==LONG||(t&NQ)==FPOINTER||(t&NQ)==HPOINTER||ISFLOAT(t&NQ))
 #define ISHWORD(t) ((t&NQ)==INT||(t&NQ)==SHORT||(t&NQ)==NPOINTER)
 #define ISCHWORD(t) ((t&NQ)==CHAR||ISHWORD(t))
+#define ISCHAR(t) ((t&NQ)==CHAR)
 #define ISSTATIC(v) ((v)->storage_class==EXTERN||(v)->storage_class==STATIC)
 #define ISBADDR(v) ((v)->vtyp->attr&&strstr(STR_BADDR,(v)->vtyp->attr))
 /*FIXME*/
@@ -190,6 +191,7 @@ static struct obj mobj;
 #define SPULLD   (CPU==6812?"\tpuld\n":"\tpuls\ta,b\n")
 #define SCMP(x)  (CPU==6812?"\tcp" x "\t":"\tcmp" x "\t")
 #define SEX      (CPU==6812?"\tsex\tb,d\n":"\tsex\n")
+#define EXTEND(t) (((t)&UNSIGNED)?"\tclra\n":SEX)
 
 #define SGN16(x) (zm2l(zi2zm(zm2zi(l2zm((long)(x))))))
 
@@ -2364,7 +2366,7 @@ void gen_code(FILE *f,struct IC *fp,struct Var *v,zmax offset)
 	  emit(f,"\tpshd\n");
 	  emit(f,"\tpshx\n");
 	}else{
-	  //emit(f,"\tpshs\ta,b,x\n");
+	  /*emit(f,"\tpshs\ta,b,x\n");*/
 	  emit(f,"\tpshs\tb,a\n");
 	  emit(f,"\tpshs\tx\n");
 	}
@@ -3467,18 +3469,59 @@ void gen_code(FILE *f,struct IC *fp,struct Var *v,zmax offset)
 	    push(2);px=1;
 	  }else
 	    px=0;
-	  if(!isreg(q2)||p->q2.reg!=acc)
-	    load_reg(f,acc,&p->q1,p->typf);
-	  if((p->typf2&NQ)==CHAR){
-	    load_reg(f,acc,&p->q2,p->typf2);
-	    emit(f,(p->typf2&UNSIGNED)?"\tclra\n":SEX);
-	    emit(f,"\ttfr\td,x\n");
-	  }else
-	    load_reg(f,ix,&p->q2,t);
-	  if(isreg(q2)&&p->q2.reg==acc)
-	    load_reg(f,acc,&p->q1,p->typf);
-	  if((t&NQ)==CHAR)
-	    emit(f,(p->typf2&UNSIGNED)?"\tclra\n":SEX);
+
+	  /* tell if X or D are ready for shifting */
+	  int xdone = 0; 
+	  int ddone = 0;
+
+	  /* free X if q1 is in X */
+	  if (ISRX(q1)) {
+	    ddone = 1;
+	    if (ISRACC(q2)) {
+	      xdone = 1;
+	      if (ISCHAR(p->typf2)) emit(f, EXTEND(p->typf2));
+	      emit(f, "\texg\tx,d\n");
+	    }
+	    else {
+	      emit(f, "\ttfr\tx,d\n");
+	    }
+	  }
+	  /* load q2 in X if not done yet */
+	  if (!xdone) {
+	    if (ISLWORD(p->typf2)) {
+	      /* q2 is 32bit, it is in memory, we take the lower 16bit */
+	      inc_addr(&p->q2, 2, p->typf2);
+	      load_reg(f, ix, &p->q2, INT);
+	    }
+	    else if (ISHWORD(p->typf2)) {
+	      /* q2 is 16bit, load it directly in X */
+	      load_reg(f, ix, &p->q2, INT);
+	    }
+	    else {
+	      /* q2 is 8bit, we must extend it in D */
+	      /* if D is busy with q1, save q1 in X */
+	      if (ddone || ISRACC(q1)) {
+		if (ISCHAR(t)) emit(f, EXTEND(t));
+		emit(f, "\ttfr\td,x\n");
+		load_reg(f, acc, &p->q2, CHAR);
+		emit(f, EXTEND(p->typf2));
+		emit(f, "\texg\tx,d\n");
+		ddone = 1;
+	      }
+	      else {
+		load_reg(f, acc, &p->q2, CHAR);
+		emit(f, EXTEND(p->typf2));
+		emit(f, "\ttfr\td,x\n");
+	      }
+	    }
+	  }
+	  /* load q1 in D if not done yet */
+	  if (!ddone) {
+	    load_reg(f, acc, &p->q1, t);
+	    if (ISCHAR(t)) emit(f, EXTEND(t));
+	  }
+
+
 	  if(c==LSHIFT) s="lsl";
 	  else if(t&UNSIGNED) s="lsr";
 	  else s="asr";

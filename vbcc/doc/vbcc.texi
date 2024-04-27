@@ -85,6 +85,11 @@ Copyright 1995-2022 Volker Barthelmann
     CPU is M68k and the target OS is AmigaOS. Resulting binaries may be
     distributed commercially without further licensing.
 
+    An exception for commercial usage is granted, provided that the target
+    CPU is 6502 with MEGA65 extensions and the target HW is MEGA65.
+    Resulting binaries may be
+    distributed commercially without further licensing.
+
     In all other cases you need my written consent.
 
     This copyright applies to vc, vbcc, vsc and vcpr.

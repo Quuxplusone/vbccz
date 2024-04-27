@@ -1,4 +1,4 @@
-/*  $VER: vbcc (supp.h) $Revision: 1.56 $     */
+/*  $VER: vbcc (supp.h) $Revision: 1.58 $     */
 
 
 #ifndef SUPP_H
@@ -320,7 +320,8 @@ typedef struct Var{
 #define STATICAUTO 131072   /* auto variable converted to static */
 #define INLINEFUNC (STATICAUTO*2)
 #define INLINEEXT (INLINEFUNC*2)
-#define BUILTIN (INLINEFUNC*2)
+#define BUILTIN (INLINEEXT*2)
+#define NEEDS (BUILTIN*2)
 
 /* C-only */
 typedef struct struct_list{
@@ -584,6 +585,7 @@ extern int no_eff_ics,early_eff_ics;
 extern int force_statics,prefer_statics;
 extern int range_opt;
 extern int default_unsigned;
+extern Var *add_attr_haddecl;
 
 /*  Das haette ich gern woanders    */
 extern struct struct_declaration *add_sd(struct struct_declaration *,int);
@@ -785,7 +787,6 @@ hashtable *new_hashtable(size_t);
 size_t hashcode(char *);
 void add_hashentry(hashtable *,char *,hashdata);
 hashdata find_name(hashtable *,char *);
-
 
 #ifdef HAVE_TARGET_PRAGMAS
 extern int handle_pragma(const char *);

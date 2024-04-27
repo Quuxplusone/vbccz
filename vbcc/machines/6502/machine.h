@@ -142,7 +142,7 @@ struct AddressingMode{
 /*  with length known at compile-time will be inlined using an      */
 /*  ASSIGN-IC if the size is less or equal to INLINEMEMCPY.         */
 /*  The type used for the ASSIGN-IC will be UNSIGNED|CHAR.          */
-#define INLINEMEMCPY 1024
+#define INLINEMEMCPY 128
 
 /*  Parameters are sometimes passed in registers without __reg.     */
 #define HAVE_REGPARMS 1
@@ -169,10 +169,10 @@ struct reg_handle{
 /* We have a implement our own cost-functions to adapt 
    register-allocation */
 #define HAVE_TARGET_RALLOC 1
-#define cost_move_reg(x,y) 6
-#define cost_load_reg(x,y) 10
-#define cost_save_reg(x,y) 10
-#define cost_pushpop_reg(x) 12
+#define cost_move_reg(x,y) 6 //6
+#define cost_load_reg(x,y) 10 //10
+#define cost_save_reg(x,y) 10 //10
+#define cost_pushpop_reg(x) 2 //12
 
 /* size of buffer for asm-output, this can be used to do
    peephole-optimizations of the generated assembly-output */

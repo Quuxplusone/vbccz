@@ -9,16 +9,16 @@
 const char tg_copyright[]="6502 code compressor V0.1 (c) 2020 by Volker Barthelmann";
 
 char *inst[]={
-  "lda","ldx","sta","stx","ldy","sty",
-  "adc","sbc","and","ora","eor",
-  "bne","beq","bcc","bcs","bvs","bvc","bpl","bmi",
+  "lda","ldx","sta","stx","ldy","sty","ldz","stz","ldq","stq",
+  "adc","sbc","and","ora","eor","adcq","sbcq","andq","oraq","eorq",
+  "bne","beq","bcc","bcs","bvs","bvc","bpl","bmi","bra",
   "clc","sec",
   /*"pla","pha",*/
-  "txa","tax","tya","tay",
-  "inc","dec","dex","inx","iny","dey",
+  "txa","tax","tya","tay","tza","taz",
+  "inc","dec","dex","inx","iny","dey","inz","dez","inw","dew","push",
   /*"rts","rti",*/"jsr","jmp",
   "cmp","cpx","cpy",
-  "asl","lsr","ror","rol"
+  "asl","lsr","ror","rol","asw","aslq","lsrq","asr","asrq"
 };
 
 int minsave=5;
@@ -61,12 +61,16 @@ void parse_line(char *s,line *p)
 
   for(i=0;i<sizeof(inst)/sizeof(inst[0]);i++){
     if(!strncmp(s,inst[i],e-s)){
+      int quad=0;
+      if(e[-1]=='q') quad=2;
       while(isspace((unsigned char)*e)) e++;
       if(*e==0){
 	p->size=1;
 	return;
       }
+      if(*e=='[') p->size++;
       p->size=2;
+      p->size+=quad;
       if(sscanf(e,"l%d",&l)==1){
 	p->flags|=LABUSE;
 	p->l1=l;
